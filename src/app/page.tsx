@@ -8,7 +8,7 @@ export default function EmpresaPage() {
       </h1>
 
       {/* CARD DADOS CADASTRAIS */}
-      <div className="bg-white rounded-lg shadow p-6 mt-4">
+      <div className="bg-white rounded-lg shadow p-1 mt-4">
 
         <h2 className="text-lg font-semibold mb-6 text-gray-700">
           Dados Cadastrais
@@ -130,7 +130,7 @@ export default function EmpresaPage() {
         </div>
       </div>
 
-      {/* Outro card (Cardápio Digital) aqui... */}
+      {/* Cardápio*/}
 
       {/* Título */}
       <h1 className="text-xl mb-1 text-gray-600 bont-semibold mt-8">
