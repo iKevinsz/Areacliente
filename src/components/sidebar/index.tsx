@@ -10,7 +10,14 @@ import {
   FaIdCard,
   FaCog,
   FaSignOutAlt,
+  FaPage4,
+  FaPagelines,
+  FaPager,
+  FaPaperPlane,
+  FaPaperclip,
+  FaHandPaper,
 } from "react-icons/fa";
+import Link from "next/link";
 
 interface SidebarProps {
   mobileOpen: boolean;
@@ -53,13 +60,14 @@ export default function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
 
         {/* MENU */}
         <nav className="flex-1 overflow-y-auto text-sm">
-          <MenuItem icon={<FaHome />} label="Meus Dados" href="#" />
-          <MenuItem icon={<FaUtensils />} label="Cardápio Digital" href="#" />
-          <MenuItem icon={<FaShoppingCart />} label="Ponto de Venda" href="#" />
-          <MenuItem icon={<FaFileInvoiceDollar />} label="Faturamento" href="#" />
-          <MenuItem icon={<FaMoneyBillWave />} label="Financeiro" href="#" />
-          <MenuItem icon={<FaIdCard />} label="Conta Digital" href="#" />
-          <MenuItem icon={<FaCog />} label="Sistema" href="#" />
+          <MenuItem icon={<FaHome />} label="Meus Dados" href="/" />
+          <MenuItem icon={<FaUtensils />} label="Cardápio Digital" href="/cardapio" />
+          <MenuItem icon={<FaPaperPlane />} label="NF-e" href="/nfe" />
+          <MenuItem icon={<FaShoppingCart />} label="Ponto de Venda" href="/pdv" />
+          <MenuItem icon={<FaFileInvoiceDollar />} label="Faturamento" href="/faturamento" />
+          <MenuItem icon={<FaMoneyBillWave />} label="Financeiro" href="/financeiro" />
+          <MenuItem icon={<FaIdCard />} label="Conta Digital" href="/contadigital" />
+          <MenuItem icon={<FaCog />} label="Sistema" href="/sistema" />
         </nav>
 
         {/* Rodapé */}
@@ -88,12 +96,12 @@ function MenuItem({
   href: string;
 }) {
   return (
-    <a
+    <Link
       href={href}
       className="flex items-center gap-3 px-4 py-3 hover:bg-gray-100 text-gray-700 cursor-pointer transition"
     >
       <span className="text-gray-500">{icon}</span>
       {label}
-    </a>
+    </Link>
   );
 }

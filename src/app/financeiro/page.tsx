@@ -1,7 +1,7 @@
-export default function Dashboard() {  
+export default function Financeiro() {  
     return (    
         <div>      
-            <h1>Dashboard Page</h1>      
+            <h1>Financeiro Page</h1>      
             <p>This is the dashboard content.</p>    
         </div>
     );
