@@ -17,7 +17,7 @@ export default function RootLayout({ children }) {
         <Sidebar mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
 
         {/* Conteúdo principal */}
-        <main className="flex-1 ml-0 lg:ml-64 p-6 w-full">
+        <main className="flex-1 ml-0 lg:ml-64 w-full">
           
           {/* Botão que só aparece no mobile */}
           <button

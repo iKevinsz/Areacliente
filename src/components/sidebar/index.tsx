@@ -37,17 +37,16 @@ export default function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
 
       {/* Sidebar */}
       <aside
-        className={`
-          fixed top-0 left-0 h-screen w-64 bg-white border-r shadow
-          z-40 flex flex-col
-          transform transition-transform duration-300
-          ${mobileOpen ? "translate-x-0" : "-translate-x-64"}
-          lg:translate-x-0
+      className={`
+          fixed top-0 left-0 z-40 h-screen w-64 bg-white border-r shadow-lg
+          transform transition-transform duration-300 ease-in-out
+          ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
+          lg:translate-x-0        
         `}
       >
         {/* Logo */}
         <div className="h-16 flex items-center px-4 border-b gap-3">
-          <img src="/logo.png" className="h-8" alt="Logo" />
+          <img src="/file.svg" className="h-8" alt="Logo" />
           <span className="font-semibold text-gray-700">Datacaixa</span>
         </div>
 
