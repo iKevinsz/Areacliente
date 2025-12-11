@@ -1,36 +1,49 @@
+// app/layout.js (ou layout.jsx)
 "use client";
-import { Children, useState } from "react";
-import Sidebar from "../components/sidebar";
-import { FaBars } from "react-icons/fa";
-import { Header } from "@/components/header";
-import { ThemeProvider } from "../components/header/ThemeProvider";
+
+import { useState, ReactNode } from "react";
+// AJUSTE O CAMINHO ABAIXO conforme onde você salvou o arquivo no Passo 2
+import Sidebar from "@/components/Sidebar"; 
+import "./globals.css";
+import { Inter } from 'next/font/google';
+ import Header from "../components/header/Header"; // Import the new Header
 import "./globals.css";
 
+const inter = Inter({ subsets: ['latin'] });
 
-export default function RootLayout({ children }) {
-  const [mobileOpen, setMobileOpen] = useState(false);
+export default function RootLayout({ children }: { children: ReactNode }) {
+  // O estado que controla se a sidebar está expandida (true) ou recolhida (false)
+  // Inicia como true (expandida)
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   return (
     <html lang="pt-br">
-      <body className="bg-gray-100 flex">
-        {/* Sidebar */}
-        <Sidebar mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
+      <body className={`${inter.className} bg-gray-50 min-h-screen`}>
+        
+        {/* Renderiza a Sidebar.
+          Passamos o estado e a função para atualizar o estado como props.
+        */}
+        <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
 
-        {/* Conteúdo principal */}
-        <main className="flex-1 ml-0 lg:ml-64 w-full">
-          
-          {/* Botão que só aparece no mobile */}
-          <button
-            className="lg:hidden mb-4 p-2 rounded-md bg-white shadow"
-            onClick={() => setMobileOpen(true)}
-          >
-            <FaBars size={20} />
-          </button>
-          {/* Header */}
-          <Header />
-          <ThemeProvider> </ThemeProvider>
-          {children}
+        {/* Conteúdo Principal (main).
+          A margem esquerda (ml) se ajusta dinamicamente:
+          - Se sidebarOpen for true: ml-72 (largura da sidebar expandida)
+          - Se sidebarOpen for false: ml-20 (largura da sidebar recolhida)
+          A classe 'transition-all' garante que o ajuste da margem seja suave.
+        */}
+        <main
+          className={`flex-1 p-6 transition-all duration-300 ease-in-out ${
+            sidebarOpen ? "ml-62" : "ml-2"
+          }`}
+        >
+          {/* Aqui será renderizada a sua página de cadastro (o children).
+            Adicionamos um container para centralizar e limitar a largura em telas grandes.
+          */}
+          <div className="max-w-[5000px] mx-auto">
+             {children}
+          </div>
         </main>
+        
       </body>
     </html>
   );

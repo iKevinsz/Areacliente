@@ -3,6 +3,7 @@
 import React from "react";
 import { useForm, FormProvider, useFormContext } from "react-hook-form";
 import { z } from "zod";
+import Sidebar from "../components/sidebar/index"; // Ajuste o caminho conforme a estrutura do seu projeto
 import { zodResolver } from "@hookform/resolvers/zod";
 import { 
   Building2, MapPin, Phone, Mail, Globe, 
@@ -10,10 +11,24 @@ import {
   Save, Upload, User, LayoutGrid, Facebook, Instagram, Youtube, Twitter
 } from "lucide-react";
 
+// --- Lista de Estados (UFs) ---
+const ESTADOS_BRASILEIROS = [
+  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", 
+  "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"
+];
+
+// --- Lista de Fusos Horários ---
+const FUSOS_HORARIOS = [
+  { value: "Sao_Paulo", label: "São Paulo / Brasília (GMT-3)" },
+  { value: "Manaus", label: "Manaus / Amazonas (GMT-4)" },
+  { value: "Rio_Branco", label: "Rio Branco / Acre (GMT-5)" },
+  { value: "Fernando_de_Noronha", label: "Fernando de Noronha (GMT-2)" },
+];
+
 // --- Schema de Validação (Zod) ---
 const empresaSchema = z.object({
   // Dados Cadastrais
-  cnpj: z.string().min(11, "Documento incompleto"), // Ajustado para aceitar CPF ou CNPJ
+  cnpj: z.string().min(11, "Documento incompleto"), 
   ie: z.string().optional(),
   im: z.string().optional(),
   segmento: z.string().optional(),
@@ -80,7 +95,6 @@ export const normalizeCnpj = (value: string | undefined) => {
     .substring(0, 18);
 };
 
-// Máscara Híbrida (Aceita CPF até 11 dígitos e muda para CNPJ se passar)
 export const normalizeDocumento = (value: string | undefined) => {
   if (!value) return "";
   const rawValue = value.replace(/\D/g, "");
@@ -97,7 +111,7 @@ export const normalizePhone = (value: string | undefined) => {
     .replace(/\D/g, "")
     .replace(/^(\d{2})(\d)/, "($1) $2")
     .replace(/(\d{4})(\d)/, "$1-$2")
-    .substring(0, 14); // (11) 2222-3333
+    .substring(0, 14); 
 };
 
 export const normalizeCelular = (value: string | undefined) => {
@@ -106,7 +120,7 @@ export const normalizeCelular = (value: string | undefined) => {
     .replace(/\D/g, "")
     .replace(/^(\d{2})(\d)/, "($1) $2")
     .replace(/(\d{5})(\d)/, "$1-$2")
-    .substring(0, 15); // (11) 92222-3333
+    .substring(0, 15); 
 };
 
 // --- Componentes UI Reutilizáveis ---
@@ -118,7 +132,6 @@ const Label = ({ icon: Icon, children, htmlFor }: { icon?: React.ElementType, ch
   </label>
 );
 
-// Tipo para as máscaras
 type MaskType = "cep" | "cpf" | "cnpj" | "documento" | "phone" | "celular";
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -129,25 +142,17 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 const Input = ({ name, mask, className, ...props }: InputProps) => {
   const { register, formState: { errors } } = useFormContext();
   const error = errors[name]?.message as string;
-
-  // Extraímos o onChange original do register
   const { onChange: formOnChange, ...rest } = register(name);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value;
-
-    // Aplica a máscara selecionada
     if (mask === 'cep') value = normalizeCep(value);
     if (mask === 'cpf') value = normalizeCpf(value);
     if (mask === 'cnpj') value = normalizeCnpj(value);
     if (mask === 'documento') value = normalizeDocumento(value);
     if (mask === 'phone') value = normalizePhone(value);
     if (mask === 'celular') value = normalizeCelular(value);
-
-    // Atualiza o valor no input
     e.target.value = value;
-    
-    // Retorna o valor mascarado para o React Hook Form
     formOnChange(e);
   };
   
@@ -157,7 +162,7 @@ const Input = ({ name, mask, className, ...props }: InputProps) => {
         {...rest}
         onChange={handleChange}
         {...props}
-        className={`w-full rounded-lg border ${error ? 'border-red-500' : 'border-gray-200'} px-3 py-2.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all ${className}`}
+        className={`w-full rounded-lg border ${error ? 'border-red-500' : 'border-gray-200'} px-3 py-2.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed ${className}`}
       />
       {error && <span className="text-xs text-red-500 mt-1">{error}</span>}
     </div>
@@ -214,23 +219,13 @@ export default function EmpresaSettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50/50 py-8 px-4 sm:px-6 lg:px-8">
-      {/* Header / Breadcrumb */}
-      <div className="max-w-[1600px] mx-auto mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <span className="text-gray-400 font-medium">Meus Dados /</span> Empresa
-        </h1>
-      </div>
-
       <FormProvider {...methods}>
         <form onSubmit={methods.handleSubmit(onSubmit)} className="max-w-[1600px] mx-auto grid grid-cols-1 xl:grid-cols-2 gap-6">
           
           {/* COLUNA ESQUERDA: DADOS CADASTRAIS */}
           <Card title="Dados Cadastrais">
-            {/* Logo Upload Area */}
             <div className="mb-8 flex flex-col items-center justify-center p-6 border-2 border-dashed border-blue-100 rounded-xl bg-blue-50/30">
               <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mb-4 overflow-hidden shadow-inner">
-                {/* Placeholder para imagem */}
                 <User className="w-12 h-12 text-gray-400" />
               </div>
               <button type="button" className="flex items-center gap-2 text-sm font-medium text-blue-600 bg-white px-4 py-2 rounded-lg border border-blue-200 hover:bg-blue-50 transition-colors shadow-sm">
@@ -240,11 +235,14 @@ export default function EmpresaSettingsPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-              {/* Linha 1 */}
               <div className="md:col-span-4">
                 <Label icon={Building2}>CNPJ / CPF</Label>
-                {/* APLICADO MÁSCARA DE DOCUMENTO (CPF/CNPJ) */}
-                <Input name="cnpj" mask="documento" placeholder="00.000.000/0000-00" />
+                <Input 
+                  name="cnpj" 
+                  mask="documento" 
+                  placeholder="00.000.000/0000-00"
+                  disabled 
+                />
               </div>
               <div className="md:col-span-4">
                 <Label>Inscrição Estadual</Label>
@@ -255,7 +253,6 @@ export default function EmpresaSettingsPage() {
                 <Input name="im" />
               </div>
 
-              {/* Linha 2 */}
               <div className="md:col-span-8">
                 <Label>Razão Social</Label>
                 <Input name="razaoSocial" />
@@ -269,16 +266,13 @@ export default function EmpresaSettingsPage() {
                 </Select>
               </div>
 
-              {/* Linha 3 */}
               <div className="md:col-span-12">
                 <Label>Nome Fantasia</Label>
                 <Input name="nomeFantasia" />
               </div>
 
-              {/* Endereço */}
               <div className="md:col-span-3">
                 <Label icon={MapPin}>CEP</Label>
-                {/* APLICADO MÁSCARA DE CEP */}
                 <Input name="cep" mask="cep" placeholder="00000-000" />
               </div>
               <div className="md:col-span-7">
@@ -302,8 +296,10 @@ export default function EmpresaSettingsPage() {
                 <div className="col-span-1">
                   <Label>UF</Label>
                   <Select name="uf">
-                    <option value="SP">SP</option>
-                    <option value="RJ">RJ</option>
+                    <option value="" disabled>Selecione</option>
+                    {ESTADOS_BRASILEIROS.map((uf) => (
+                      <option key={uf} value={uf}>{uf}</option>
+                    ))}
                   </Select>
                 </div>
                 <div className="col-span-2">
@@ -315,12 +311,10 @@ export default function EmpresaSettingsPage() {
                 </div>
               </div>
 
-              {/* Contato */}
               <div className="md:col-span-12 border-t border-gray-100 my-2"></div>
 
               <div className="md:col-span-4">
                 <Label icon={Phone}>Telefone</Label>
-                {/* APLICADO MÁSCARA DE TELEFONE FIXO */}
                 <Input name="telefone" mask="phone" placeholder="(00) 0000-0000" />
               </div>
               <div className="md:col-span-4">
@@ -329,7 +323,6 @@ export default function EmpresaSettingsPage() {
               </div>
               <div className="md:col-span-4">
                 <Label>Celular</Label>
-                {/* APLICADO MÁSCARA DE CELULAR */}
                 <Input name="celular" mask="celular" placeholder="(00) 90000-0000" />
               </div>
 
@@ -350,9 +343,11 @@ export default function EmpresaSettingsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-1">
                   <Label icon={Clock}>Fuso Horário</Label>
+                  {/* --- MUDANÇA AQUI: USO DO MAP NOS FUSOS --- */}
                   <Select name="fusoHorario">
-                    <option value="Sao_Paulo">São Paulo (GMT-3)</option>
-                    <option value="Manaus">Manaus (GMT-4)</option>
+                    {FUSOS_HORARIOS.map((fuso) => (
+                      <option key={fuso.value} value={fuso.value}>{fuso.label}</option>
+                    ))}
                   </Select>
                 </div>
                 <div className="md:col-span-1">
@@ -378,13 +373,17 @@ export default function EmpresaSettingsPage() {
                     </button>
                   </div>
                 </div>
-
-                <div className="md:col-span-2 p-3 bg-blue-50 rounded-lg border border-blue-100 mt-2">
-                  <span className="text-xs font-semibold text-blue-800 uppercase block mb-1">Link do Cardápio Digital:</span>
-                  <a href="#" className="text-sm text-blue-600 hover:underline truncate block">
-                    https://www.cardapio.datacaixa.com.br/kevinteste
-                  </a>
-                </div>
+              <div className="md:col-span-2 p-3 bg-blue-50 rounded-lg border border-blue-100 mt-2">
+                <span className="text-xs font-semibold text-blue-800 uppercase block mb-1">Link do Cardápio Digital:</span>
+                <a 
+                  href="https://www.pededaki.com.br/kevinteste" 
+                  target="_blank"               // Abre em nova aba
+                  rel="noopener noreferrer"     // Segurança recomendada
+                  className="text-sm text-blue-600 hover:underline truncate block"
+                >
+                  https://www.pededaki.com.br/kevinteste
+                </a>
+              </div>
               </div>
             </Card>
 
@@ -392,7 +391,6 @@ export default function EmpresaSettingsPage() {
               <div className="space-y-4">
                 <div>
                   <Label icon={Phone}>WhatsApp</Label>
-                  {/* APLICADO MÁSCARA DE CELULAR NO WHATSAPP */}
                   <Input name="whatsapp" mask="celular" placeholder="Apenas números" />
                 </div>
                 <div>
@@ -429,6 +427,5 @@ export default function EmpresaSettingsPage() {
 
         </form>
       </FormProvider>
-    </div>
   );
 }
