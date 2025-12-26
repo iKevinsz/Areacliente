@@ -8,6 +8,7 @@ import "./globals.css";
 import { Inter } from 'next/font/google';
  import Header from "../components/header/Header"; // Import the new Header
 import "./globals.css";
+import ClientLayout from "./produtos/ClientLayout";
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -39,7 +40,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           {/* Aqui será renderizada a sua página de cadastro (o children).
             Adicionamos um container para centralizar e limitar a largura em telas grandes.
           */}
-          <div className="max-w-[5000px] mx-auto">
+          <div className="max-w-[2000px] mx-auto">
              {children}
           </div>
         </main>
