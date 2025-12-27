@@ -1,11 +1,14 @@
-// src/components/Sidebar.jsx
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
-import { FaChevronDown, FaChevronRight, FaGears, FaXmark, FaBars } from "react-icons/fa6"; 
+import { usePathname } from "next/navigation";
+import { FaChevronDown, FaXmark, FaBars, FaGears, FaStore, FaPlus, FaThumbtack } from "react-icons/fa6"; 
 import { GoGraph } from "react-icons/go";
+import { FaServer } from "react-icons/fa";
 import {
+  MdPointOfSale,
   MdOutlineHeadsetMic,
   MdSpaceDashboard,
   MdRestaurantMenu,
@@ -16,68 +19,135 @@ import { TbLayoutSidebarLeftCollapse, TbLayoutSidebarLeftExpand } from "react-ic
 
 const Sidebar = ({ open, setOpen }) => {
   const [subMenus, setSubMenus] = useState({});
+  const pathname = usePathname();
+  const [isMobile, setIsMobile] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  
+  // --- NOVO ESTADO: CONTROLE DE FIXAÇÃO ---
+  // Se for true, a sidebar ignora o MouseLeave e fica sempre aberta.
+  const [isPinned, setIsPinned] = useState(false);
+
+  const [storeMenuOpen, setStoreMenuOpen] = useState(false);
+  const [selectedStore, setSelectedStore] = useState({ id: 1, name: "KEVIN-TESTE" });
+  
+  const myStores = [
+    { id: 1, name: "KEVIN-TESTE" },
+    { id: 2, name: "LUNIERE BALÕES DECOR" },
+    { id: 3, name: "KEVIN PARCEIRO TESTE" }
+  ];
+
+  const storeMenuRef = useRef(null);
+
+  useEffect(() => {
+    setMounted(true);
+    if (typeof window !== "undefined") {
+      const checkMobile = () => setIsMobile(window.innerWidth < 768);
+      checkMobile();
+      window.addEventListener("resize", checkMobile);
+      
+      const handleClickOutside = (event) => {
+        if (storeMenuRef.current && !storeMenuRef.current.contains(event.target)) {
+          setStoreMenuOpen(false);
+        }
+      };
+      document.addEventListener("mousedown", handleClickOutside);
+
+      return () => {
+        window.removeEventListener("resize", checkMobile);
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }
+  }, []);
 
   const toggleSubMenu = (menuKey) => {
     setSubMenus((prev) => ({ ...prev, [menuKey]: !prev[menuKey] }));
   };
 
+  const handleMouseEnter = () => {
+    if (!isMobile) setOpen(true);
+  };
+
+  const handleMouseLeave = () => {
+    // Só fecha se NÃO estiver pinada e não for mobile
+    if (!isMobile && !isPinned) {
+      setOpen(false);
+      setStoreMenuOpen(false);
+    }
+  };
+
+  const togglePin = () => {
+    const newState = !isPinned;
+    setIsPinned(newState);
+    setOpen(true); // Garante que ao pinar ela esteja aberta
+  };
+
   const Menus = [
     { title: "Meus Dados", icon: <MdSpaceDashboard />, path: "/", key: "dashboard" },
-    
     {
       title: "Cardápio Digital",
       icon: <MdRestaurantMenu />,
       gap: true,
-      subMenu: [
-        { title: "Produtos", path: "/produtos" },
-        { title: "Categorias", path: "/cardapio/categorias" },
-      ],
       key: "cardapio",
-    },
-    
-    { title: "NF-e", icon: <MdReceipt />, path: "/nfe", key: "nfe" },
-    
-    // --- ALTERAÇÃO: Financeiro agora tem Submenu ---
-{ 
-      title: "Financeiro", 
-      icon: <MdAttachMoney />, 
-      key: "financeiro", 
       subMenu: [
-        // O LINK DEVE SER EXATAMENTE ESTE:
-        { title: "Visão Geral", path: "/financeiro/resumo" }, 
-        
+        { title: "Dashboard", path: "/cardapio/dashboard" },
+        { title: "Produtos", path: "/cardapio/produtos" },
+        { title: "Grupos", path: "/cardapio/grupos" },
+        { title: "QRCode", path: "/cardapio/qrcode" },
+        { title: "WhatsApp", path: "/cardapio/whatsapp" },
+        { title: "Avaliações", path: "/cardapio/avaliacoes" },
+        { title: "Parâmetros", path: "/cardapio/parametros" },
+      ],
+    },
+    {
+      title: "Ponto de Venda",
+      icon: <MdPointOfSale />,
+      key: "pdv",
+      subMenu: [
+        { title: "Dashboard", path: "/pdv/dashboard" },
+        { title: "Consultar Caixa", path: "/pdv/caixa" },
+      ],
+    },
+    { title: "NF-e", icon: <MdReceipt />, path: "/nfe", key: "nfe" },
+    {
+      title: "Financeiro",
+      icon: <MdAttachMoney />,
+      key: "financeiro",
+      subMenu: [
+        { title: "Visão Geral", path: "/financeiro/resumo" },
         { title: "Contas a Pagar", path: "/financeiro/pagar" },
         { title: "Contas a Receber", path: "/financeiro/receber" },
         { title: "Fluxo de Caixa", path: "/financeiro/fluxo" },
-      ]
+      ],
     },
-    // -----------------------------------------------
-
-    // --- ALTERAÇÃO: Faturamento agora tem Submenu ---
-    { 
-      title: "Faturamento", 
-      icon: <GoGraph />, 
-      key: "faturamento", 
+    {
+      title: "Faturamento",
+      icon: <GoGraph />,
+      key: "faturamento",
       subMenu: [
-        { title: "Dashboard", path: "/analytics" }, // Link para a tela de gráficos que criamos
-        { title: "Histórico de Vendas", path: "/faturamento/historico" },
+        { title: "Dashboard", path: "/faturamento/dashboard" },
+        { title: "Histórico de Vendas", path: "/faturamento/vendas" },
         { title: "Relatórios", path: "/faturamento/relatorios" },
-      ]
+      ],
     },
-    // ------------------------------------------------
-    
-    { 
-      title: "Sistema", 
-      icon: <MdOutlineHeadsetMic />, 
-      key: "sistema", 
-      subMenu: [
-        { title: "Licenças", path: "/sistema/licencas" },
-        { title: "Faturas", path: "/sistema/faturas" },
-        { title: "Cadastrar Cartão", path: "/sistema/cartao" },
-        { title: "Backup", path: "/sistema/backup" },
-        { title: "Sugestões", path: "/sistema/sugestoes" },
-        { title: "Downloads", path: "/sistema/downloads" },
-      ]
+{
+  title: "Sistema",
+  icon: <FaServer />, // Ícone alterado aqui
+  key: "sistema",
+  subMenu: [
+    { title: "Licenças", path: "/sistema/licencas" },
+    { title: "Cadastrar Cartão", path: "/sistema/cartao" },
+    { title: "Faturas", path: "/sistema/faturas" },
+    { title: "Backup", path: "/sistema/bckp" },
+    { title: "Sugestões", path: "/sistema/sugestoes" },
+    { title: "Downloads", path: "/sistema/downloads" },
+  ],
+},
+
+        {
+      title: "Suporte",
+      icon: <MdOutlineHeadsetMic />, // Usando o ícone de headset que você já importou
+      path: "/suporte",
+      key: "suporte"
     },
 
     {
@@ -93,114 +163,179 @@ const Sidebar = ({ open, setOpen }) => {
 
   return (
     <>
-      {/* BOTÃO FLUTUANTE (MOBILE) */}
-      {!open && (
-        <button 
-            onClick={() => setOpen(true)}
-            className="md:hidden fixed top-4 left-4 z-[9999] p-2 bg-[#003087] text-white rounded-md shadow-lg hover:bg-blue-800 transition-all"
+      {/* BOTÃO FLUTUANTE MOBILE */}
+      {mounted && !open && createPortal(
+        <button
+          onClick={() => setOpen(true)}
+          style={{ zIndex: 2147483647 }}
+          className="md:hidden fixed top-4 left-4 p-2 bg-[#00254d] text-white rounded-md shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:bg-[#001a35] transition-all border border-white/20"
         >
-            <FaBars size={24} />
-        </button>
+          <FaBars size={24} />
+        </button>,
+        document.body
       )}
 
-      {/* OVERLAY ESCURO (BACKDROP) */}
-      <div 
-        className={`fixed inset-0 bg-black/50 z-[9998] transition-opacity duration-300 md:hidden ${
+      {/* OVERLAY MOBILE */}
+      <div
+        style={{ zIndex: 2147483646 }}
+        className={`md:hidden fixed inset-0 bg-black/50 transition-opacity duration-300 ${
           open ? "opacity-100 visible" : "opacity-0 invisible pointer-events-none"
         }`}
         onClick={() => setOpen(false)}
       />
 
-      {/* SIDEBAR */}
-      <div
+      {/* SIDEBAR CONTAINER */}
+      <nav
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        style={{ zIndex: 2147483647 }}
         className={`
-          fixed top-0 left-0 h-screen bg-[#003057] z-[9999] transition-all duration-300 ease-in-out shadow-lg
+          fixed top-0 bottom-0 left-0 bg-[#F3F4F6] transition-all duration-300 ease-in-out shadow-2xl border-r border-gray-200
           ${open ? "w-72 md:w-80" : "w-72 md:w-20"} 
           ${open ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
-          p-5 pt-8
+          ${!open ? "invisible md:visible" : "visible"}
         `}
       >
-        {/* BOTÃO TOGGLE DESKTOP */}
+        {/* BOTÃO FIXAR/SOLTAR (Desktop) - SUBSTITUI O ANTIGO TOGGLE */}
         <div
-          className={`hidden md:flex absolute cursor-pointer -right-3 top-9 w-7 h-7 bg-white border-2 border-[#003087] rounded-full text-sm items-center justify-center text-[#003087] ${
-            !open && "rotate-180"
-          } transition-all duration-300 z-50 shadow-md`}
-          onClick={() => setOpen(!open)}
+          title={isPinned ? "Desafixar Sidebar" : "Fixar Sidebar"}
+          className={`hidden md:flex absolute cursor-pointer -right-3 top-9 w-7 h-7 bg-white border-2 rounded-full text-sm items-center justify-center transition-all duration-300 z-50 shadow-md hover:scale-110 
+            ${isPinned ? "border-blue-500 text-blue-500 shadow-blue-200" : "border-[#00254d] text-[#00254d]"}
+          `}
+          onClick={togglePin}
         >
-          {open ? <TbLayoutSidebarLeftExpand /> : <TbLayoutSidebarLeftCollapse />}
+          {isPinned ? <FaThumbtack className="rotate-45" /> : <FaThumbtack />}
         </div>
 
         {/* BOTÃO FECHAR MOBILE */}
-        <div 
-            className="md:hidden absolute top-4 right-4 text-white/80 hover:text-white cursor-pointer p-2"
-            onClick={() => setOpen(false)}
+        <div
+          className="md:hidden absolute top-4 right-4 text-[#00254d] hover:text-[#001a35] cursor-pointer p-2 z-50"
+          onClick={() => setOpen(false)}
         >
-            <FaXmark size={24} />
+          <FaXmark size={24} />
         </div>
 
-        {/* Logo */}
-        <div className={`flex gap-x-4 items-center mb-8 ${!open ? "md:justify-center" : ""}`}>
-          <img
-            src="/logo.png" 
-            alt="logo"
-            className={`w-10 h-10 rounded-full object-cover border-2 border-white/20 duration-500 ${
-              open && "rotate-[360deg]"
-            }`}
-          />
-          <h1 className={`text-white origin-left font-semibold text-xl duration-200 whitespace-nowrap ${!open && "md:hidden"}`}>
-            Área de Cliente
-          </h1>
-        </div>
+        <div className="h-full w-full flex flex-col p-5 pt-8 overflow-hidden">
+          
+          <div className={`flex-shrink-0 flex items-center mb-6 transition-all duration-300 ${open ? "gap-x-4 justify-start" : "justify-center"}`}>
+            <div className="relative w-10 h-10 shrink-0">
+              <img
+                src="/logo.png"
+                alt="logo"
+                className={`w-10 h-10 rounded-md object-cover border-[#00254d]/20 transition-all duration-700 ease-in-out ${
+                  open ? "md:rotate-[360deg]" : ""
+                }`}
+              />
+            </div>
+            
+            <h1 className={`text-[#00254d] font-bold text-xl whitespace-nowrap transition-all duration-200 origin-left ${!open ? "opacity-0 w-0 scale-0 overflow-hidden" : "opacity-100 w-auto scale-100"}`}>
+              Área de Cliente
+            </h1>
+          </div>
 
-        {/* Menus */}
-        <ul className="space-y-1 overflow-y-auto max-h-[calc(100vh-100px)] scrollbar-hide">
-          {Menus.map((Menu, index) => (
-            <li key={index} className={`flex flex-col rounded-md cursor-pointer text-gray-300 hover:bg-white/10 ${Menu.gap ? "mt-8" : "mt-1"}`}>
-              {Menu.subMenu ? (
-                <div 
-                  className={`flex items-center py-3 px-3 ${!open ? "md:justify-center" : "justify-between"}`}
-                  onClick={() => { 
-                    if(!open) setOpen(true); 
-                    toggleSubMenu(Menu.key); 
-                  }}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">{Menu.icon}</span>
-                    <span className={`${!open && "md:hidden"} font-medium whitespace-nowrap`}>{Menu.title}</span>
-                  </div>
-                  {open && <FaChevronDown className={`${subMenus[Menu.key] && "rotate-180"} duration-200`} size={12}/>}
+          <div className="mb-6 relative" ref={storeMenuRef}>
+            <button
+                onClick={() => {
+                    if(!open) {
+                        setOpen(true);
+                        setTimeout(() => setStoreMenuOpen(true), 150);
+                    } else {
+                        setStoreMenuOpen(!storeMenuOpen);
+                    }
+                }}
+                className={`w-full flex items-center gap-2 p-2 rounded-lg border transition-all duration-200 ${storeMenuOpen ? 'border-blue-500 bg-white shadow-sm ring-1 ring-blue-100' : 'border-gray-300 bg-white hover:border-[#00254d]'} ${!open ? 'justify-center border-transparent bg-transparent hover:bg-white' : ''}`}
+            >
+                <div className={`p-1.5 rounded-md ${open ? 'bg-blue-50 text-blue-600' : 'bg-[#00254d]/5 text-[#00254d]'}`}>
+                    <FaStore size={16} />
                 </div>
-              ) : (
-                <Link 
-                  href={Menu.path} 
-                  className={`flex items-center gap-3 py-3 px-3 ${!open ? "md:justify-center" : ""}`}
-                  onClick={() => setOpen(false)}
-                >
-                  <span className="text-2xl">{Menu.icon}</span>
-                  <span className={`${!open && "md:hidden"} font-medium whitespace-nowrap`}>{Menu.title}</span>
-                </Link>
-              )}
-              
-              {/* Submenu Render */}
-              {Menu.subMenu && subMenus[Menu.key] && open && (
-                <ul className="pl-10 bg-black/10 pb-2 transition-all">
-                  {Menu.subMenu.map((sub, i) => (
-                    <li key={i}>
-                      <Link 
-                        href={sub.path} 
-                        className="flex items-center gap-2 py-2 text-sm text-gray-400 hover:text-white" 
-                        onClick={() => setOpen(false)}
-                      >
-                        <FaChevronRight size={10}/> {sub.title}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </li>
-          ))}
-        </ul>
-      </div>
+                <div className={`flex-1 text-left overflow-hidden ${!open ? 'hidden' : 'block'}`}>
+                    <span className="block text-xs text-gray-400 font-medium">Loja Atual:</span>
+                    <span className="block text-sm font-bold text-gray-700 truncate">{selectedStore.name}</span>
+                </div>
+                {open && (
+                    <FaChevronDown size={12} className={`text-gray-400 transition-transform duration-200 ${storeMenuOpen ? 'rotate-180' : ''}`} />
+                )}
+            </button>
+
+            {storeMenuOpen && open && (
+                <div className="absolute top-full left-0 w-full mt-2 bg-white border border-gray-200 rounded-lg shadow-xl z-50 overflow-hidden animate-fade-in">
+                    <div className="max-h-48 overflow-y-auto scrollbar-hide">
+                        {myStores.map(store => (
+                            <div
+                                key={store.id}
+                                onClick={() => {
+                                    setSelectedStore(store);
+                                    setStoreMenuOpen(false);
+                                }}
+                                className={`px-4 py-3 text-sm cursor-pointer border-l-4 transition-all hover:bg-gray-50 flex items-center justify-between ${selectedStore.id === store.id ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium' : 'border-transparent text-gray-600'}`}
+                            >
+                                {store.name}
+                                {selectedStore.id === store.id && <div className="w-2 h-2 rounded-full bg-blue-500"></div>}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+          </div>
+
+          <ul className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide px-1 pb-24 space-y-2">
+            {Menus.map((Menu, index) => (
+              <li key={index} className={`${Menu.gap ? "mt-8" : "mt-1"}`}>
+                {Menu.subMenu ? (
+                  <div
+                    className={`group flex items-center py-3 px-3 rounded-lg cursor-pointer transition-all duration-200 border border-transparent hover:bg-white hover:shadow-sm hover:border-gray-200 ${subMenus[Menu.key] ? "bg-white shadow-sm border-gray-200" : ""} ${open ? "justify-between" : "justify-center"}`}
+                    onClick={() => {
+                      if (!open) setOpen(true);
+                      toggleSubMenu(Menu.key);
+                    }}
+                  >
+                    <div className={`flex items-center ${open ? "gap-3" : ""}`}>
+                      <span className="text-2xl text-gray-500 group-hover:text-[#00254d] transition-colors shrink-0">
+                        {Menu.icon}
+                      </span>
+                      <span className={`font-medium text-gray-600 group-hover:text-[#00254d] whitespace-nowrap transition-all duration-200 ${!open ? "opacity-0 w-0 overflow-hidden" : "opacity-100 w-auto"}`}>
+                        {Menu.title}
+                      </span>
+                    </div>
+                    {open && (
+                      <FaChevronDown className={`text-gray-400 group-hover:text-[#00254d] transition-transform duration-200 ${subMenus[Menu.key] && "rotate-180"}`} size={12} />
+                    )}
+                  </div>
+                ) : (
+                  <Link
+                    href={Menu.path || "#"}
+                    className={`group flex items-center py-3 px-3 rounded-lg transition-all duration-200 border border-transparent hover:bg-white hover:shadow-sm hover:border-gray-200 ${pathname === Menu.path ? "bg-white shadow-sm border-gray-200" : ""} ${open ? "gap-3 justify-start" : "justify-center"}`}
+                    onClick={() => { if (isMobile) setOpen(false); }}
+                  >
+                    <span className={`text-2xl transition-colors shrink-0 ${pathname === Menu.path ? "text-[#00254d]" : "text-gray-500 group-hover:text-[#00254d]"}`}>
+                      {Menu.icon}
+                    </span>
+                    <span className={`font-medium whitespace-nowrap transition-all duration-200 ${pathname === Menu.path ? "text-[#00254d] font-bold" : "text-gray-600 group-hover:text-[#00254d]"} ${!open ? "opacity-0 w-0 overflow-hidden" : "opacity-100 w-auto"}`}>
+                      {Menu.title}
+                    </span>
+                  </Link>
+                )}
+                {Menu.subMenu && subMenus[Menu.key] && open && (
+                  <ul className="mt-1 ml-4 border-l-2 border-gray-200 pl-2 space-y-1 animate-fade-in">
+                    {Menu.subMenu.map((sub, i) => (
+                      <li key={i}>
+                        <Link
+                          href={sub.path}
+                          className={`flex items-center gap-2 py-2 px-3 text-sm rounded-md transition-all ${pathname === sub.path ? "text-[#00254d] font-bold bg-white shadow-sm" : "text-gray-500 hover:text-[#00254d] hover:bg-white hover:shadow-sm"}`}
+                          onClick={() => { if (isMobile) setOpen(false); }}
+                        >
+                          <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${pathname === sub.path ? "bg-[#00254d]" : "bg-gray-300"}`}></div>
+                          <span className="whitespace-nowrap truncate">{sub.title}</span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </nav>
     </>
   );
 };

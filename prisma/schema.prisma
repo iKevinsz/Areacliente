@@ -1,14 +1,98 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
+}
+
+model Empresa {
+  id                  Int          @id @default(autoincrement())
+  cnpj_cpf            String       @db.VarChar(20)
+  razao_social        String       @db.VarChar(255)
+  nome_fantasia       String       @db.VarChar(255)
+  inscricao_estadual  String?      @db.VarChar(50)
+  inscricao_municipal String?      @db.VarChar(50)
+  segmento            String?      @db.VarChar(100)
+  cep                 String?      @db.VarChar(10)
+  endereco            String?      @db.VarChar(255)
+  numero              String?      @db.VarChar(20)
+  bairro              String?      @db.VarChar(100)
+  complemento         String?      @db.VarChar(100)
+  uf                  String?      @db.Char(2)
+  cidade              String?      @db.VarChar(100)
+  telefone            String?      @db.VarChar(20)
+  celular             String?      @db.VarChar(20)
+  email               String?      @db.VarChar(255)
+  site                String?      @db.VarChar(255)
+  // Ajustado para LongText para suportar a string da imagem
+  logo_path           String?      @db.LongText
+  fuso_horario        String       @default("Sao_Paulo") @db.VarChar(100)
+  tempo_retirada      Int          @default(0)
+  tempo_entrega       Int          @default(0)
+  link_loja           String?      @unique @db.VarChar(100)
+  whatsapp            String?      @db.VarChar(20)
+  instagram           String?      @db.VarChar(255)
+  facebook            String?      @db.VarChar(255)
+  youtube             String?      @db.VarChar(255)
+  twitter             String?      @db.VarChar(255)
+  created_at          DateTime     @default(now())
+  grupos              Grupo[]
+  avaliacoes          Avaliacao[]
+
+  @@map("empresas")
+}
+
+model Grupo {
+  id           Int           @id @default(autoincrement())
+  empresa_id   Int?
+  sequencia    Int
+  descricao    String        @db.VarChar(100)
+  ativo        Boolean       @default(true)
+  empresa      Empresa?      @relation(fields: [empresa_id], references: [id], onDelete: Cascade)
+  variacoes    Variacao[]
+  complementos Complemento[]
+
+  @@map("grupos")
+}
+
+model Variacao {
+  id       Int    @id @default(autoincrement())
+  grupo_id Int?
+  nome     String @db.VarChar(100)
+  grupo    Grupo? @relation(fields: [grupo_id], references: [id], onDelete: Cascade)
+
+  @@map("variacoes")
+}
+
+model Complemento {
+  id          Int      @id @default(autoincrement())
+  grupo_id    Int?
+  nome        String   @db.VarChar(100)
+  preco       Decimal  @default(0.00) @db.Decimal(10, 2)
+  qtd_max     Int      @default(1)
+  obrigatorio Boolean  @default(false)
+  grupo       Grupo?   @relation(fields: [grupo_id], references: [id], onDelete: Cascade)
+
+  @@map("complementos")
+}
+
+model Avaliacao {
+  id             Int             @id @default(autoincrement())
+  empresa_id     Int?
+  cliente_nome   String          @db.VarChar(100)
+  nota           Int
+  comentario     String?         @db.Text
+  tags           String?         @db.VarChar(255)
+  status         AvaliacaoStatus @default(pending)
+  resposta_admin String?         @db.Text
+  data_avaliacao DateTime        @default(now())
+  empresa        Empresa?        @relation(fields: [empresa_id], references: [id], onDelete: Cascade)
+
+  @@map("avaliacoes")
+}
+
+enum AvaliacaoStatus {
+  pending
+  replied
 }

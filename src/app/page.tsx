@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useRef } from "react";
 import { useForm, FormProvider, useFormContext } from "react-hook-form";
 import { z } from "zod";
 import Sidebar from "../components/sidebar/index"; // Ajuste o caminho conforme a estrutura do seu projeto
@@ -201,6 +201,9 @@ const Card = ({ title, children, className }: { title: string, children: React.R
 // --- Componente Principal ---
 
 export default function EmpresaSettingsPage() {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+
   const methods = useForm<EmpresaFormData>({
     resolver: zodResolver(empresaSchema),
     defaultValues: {
@@ -213,8 +216,25 @@ export default function EmpresaSettingsPage() {
     }
   });
 
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 1024 * 1024) {
+        alert("A imagem deve ter no máximo 1MB.");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const onSubmit = (data: EmpresaFormData) => {
-    console.log("Dados salvos:", data);
+    // Adiciona o logoPreview ao objeto final se houver imagem carregada
+    const finalData = { ...data, logo: logoPreview };
+    console.log("Dados salvos:", finalData);
     alert("Dados da empresa atualizados com sucesso!");
   };
 
@@ -225,11 +245,30 @@ export default function EmpresaSettingsPage() {
           {/* COLUNA ESQUERDA: DADOS CADASTRAIS */}
           <Card title="Dados Cadastrais">
             <div className="mb-8 flex flex-col items-center justify-center p-6 border-2 border-dashed border-blue-100 rounded-xl bg-blue-50/30">
-              <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mb-4 overflow-hidden shadow-inner">
-                <User className="w-12 h-12 text-gray-400" />
+              <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mb-4 overflow-hidden shadow-inner border-2 border-white">
+                {logoPreview ? (
+                  <img src={logoPreview} alt="Logo preview" className="w-full h-full object-cover" />
+                ) : (
+                  <User className="w-12 h-12 text-gray-400" />
+                )}
               </div>
-              <button type="button" className="flex items-center gap-2 text-sm font-medium text-blue-600 bg-white px-4 py-2 rounded-lg border border-blue-200 hover:bg-blue-50 transition-colors shadow-sm">
-                <Upload className="w-4 h-4" /> Carregar Logo
+              
+              {/* Input file oculto */}
+              <input 
+                type="file" 
+                ref={fileInputRef}
+                className="hidden" 
+                accept="image/png, image/jpeg, image/bmp"
+                onChange={handleLogoUpload}
+              />
+
+              <button 
+                type="button" 
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-2 text-sm font-medium text-blue-600 bg-white px-4 py-2 rounded-lg border border-blue-200 hover:bg-blue-50 transition-colors shadow-sm cursor-pointer"
+              >
+                <Upload className="w-4 h-4" /> 
+                {logoPreview ? "Alterar Logo" : "Carregar Logo"}
               </button>
               <p className="text-xs text-gray-400 mt-2">JPG, BMP ou PNG. Máx 1MB.</p>
             </div>
@@ -240,7 +279,7 @@ export default function EmpresaSettingsPage() {
                 <Input 
                   name="cnpj" 
                   mask="documento" 
-                  placeholder="00.000.000/0000-00"
+                  placeholder="14.356.429/0001-20"
                   disabled 
                 />
               </div>
@@ -343,7 +382,6 @@ export default function EmpresaSettingsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-1">
                   <Label icon={Clock}>Fuso Horário</Label>
-                  {/* --- MUDANÇA AQUI: USO DO MAP NOS FUSOS --- */}
                   <Select name="fusoHorario">
                     {FUSOS_HORARIOS.map((fuso) => (
                       <option key={fuso.value} value={fuso.value}>{fuso.label}</option>
@@ -368,7 +406,7 @@ export default function EmpresaSettingsPage() {
                   <Label icon={Share2}>Link da Loja</Label>
                   <div className="flex gap-2">
                     <Input name="linkLoja" placeholder="loja-teste" />
-                    <button type="button" className="p-2.5 bg-blue-50 text-blue-600 rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors">
+                    <button type="button" className="p-2.5 bg-blue-50 text-blue-600 rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors cursor-pointer">
                       <Share2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -379,7 +417,7 @@ export default function EmpresaSettingsPage() {
                   href="https://www.pededaki.com.br/kevinteste" 
                   target="_blank"               // Abre em nova aba
                   rel="noopener noreferrer"     // Segurança recomendada
-                  className="text-sm text-blue-600 hover:underline truncate block"
+                  className="text-sm text-blue-600 hover:underline truncate block font-medium"
                 >
                   https://www.pededaki.com.br/kevinteste
                 </a>
@@ -417,7 +455,7 @@ export default function EmpresaSettingsPage() {
             <div className="mt-auto">
                 <button 
                   type="submit" 
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 rounded-xl shadow-lg shadow-blue-200 transition-all flex items-center justify-center gap-2 text-lg"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 rounded-xl shadow-lg shadow-blue-200 transition-all flex items-center justify-center gap-2 text-lg cursor-pointer"
                 >
                   <Save className="w-5 h-5" />
                   Salvar Alterações

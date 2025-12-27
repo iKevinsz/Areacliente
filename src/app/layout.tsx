@@ -8,7 +8,7 @@ import "./globals.css";
 import { Inter } from 'next/font/google';
  import Header from "../components/header/Header"; // Import the new Header
 import "./globals.css";
-import ClientLayout from "./produtos/ClientLayout";
+
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -19,7 +19,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 
   return (
     <html lang="pt-br">
-      <body className={`${inter.className} bg-gray-50 min-h-screen`}>
+      <body className={`${inter.className} bg-red-50 min-h-screen`}>
         
         {/* Renderiza a Sidebar.
           Passamos o estado e a função para atualizar o estado como props.
@@ -34,7 +34,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         */}
         <main
           className={`flex-1 p-6 transition-all duration-300 ease-in-out ${
-            sidebarOpen ? "ml-62" : "ml-2"
+            sidebarOpen ? "md:ml-80" : "md:ml-20"
           }`}
         >
           {/* Aqui será renderizada a sua página de cadastro (o children).

@@ -299,6 +299,7 @@ function TotaisSidebar() {
 
 // Schema de validação
 const nfeSchema = z.object({
+  tipoOperacao: z.string().optional(),
   destinatario: z.object({
     documento: z.string().min(14, "CNPJ inválido"),
     nome: z.string().nonempty("Razão social é obrigatória"),
@@ -339,7 +340,8 @@ export default function NfeCreationPage() {
     }`;
 
   return (
-    <div className="min-h-screen bg-gray-100 py-6">
+    // CORREÇÃO AQUI: bg-gray-100 alterado para bg-gray-50
+    <div className="min-h-screen bg-gray-50 py-6">
       <header className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Nova Nota Fiscal Eletrônica (NF-e)</h1>
       </header>
