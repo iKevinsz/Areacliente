@@ -8,12 +8,16 @@ import {
   Download, 
   Server, 
   CheckCircle2, 
-  Loader2 
+  Loader2,
+  X // Importei o X para fechar caso queira
 } from "lucide-react";
 
 export default function BackupPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [servidor, setServidor] = useState("KEVIN");
+  
+  // Estado para controlar a visibilidade do Modal
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // Dados baseados na imagem image_2da078.png
   const backups = [
@@ -28,9 +32,11 @@ export default function BackupPage() {
 
   const handleSave = () => {
     setIsSaving(true);
+    // Simula o tempo de salvamento
     setTimeout(() => {
       setIsSaving(false);
-      alert("Configuração salva com sucesso!");
+      // Abre o modal de sucesso
+      setShowSuccessModal(true);
     }, 1000);
   };
 
@@ -128,6 +134,45 @@ export default function BackupPage() {
         </div>
 
       </div>
+
+      {/* --- MODAL DE SUCESSO --- */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 relative animate-in zoom-in-95 duration-300">
+            
+            {/* Botão Fechar (X) */}
+            <button 
+              onClick={() => setShowSuccessModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+            >
+              <X size={20} />
+            </button>
+
+            {/* Conteúdo do Modal */}
+            <div className="flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                <CheckCircle2 className="text-green-600 w-8 h-8" />
+              </div>
+              
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                Sucesso!
+              </h3>
+              
+              <p className="text-sm text-gray-500 mb-6 leading-relaxed">
+                As configurações do servidor de backup foram atualizadas corretamente.
+              </p>
+
+              <button 
+                onClick={() => setShowSuccessModal(false)}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-blue-100 active:scale-95"
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

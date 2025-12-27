@@ -14,6 +14,7 @@ import {
   MdRestaurantMenu,
   MdAttachMoney,
   MdReceipt,
+  MdLogout, // <--- 1. Importação do ícone de Sair
 } from "react-icons/md";
 import { TbLayoutSidebarLeftCollapse, TbLayoutSidebarLeftExpand } from "react-icons/tb";
 
@@ -23,8 +24,6 @@ const Sidebar = ({ open, setOpen }) => {
   const [isMobile, setIsMobile] = useState(false);
   const [mounted, setMounted] = useState(false);
   
-  // --- NOVO ESTADO: CONTROLE DE FIXAÇÃO ---
-  // Se for true, a sidebar ignora o MouseLeave e fica sempre aberta.
   const [isPinned, setIsPinned] = useState(false);
 
   const [storeMenuOpen, setStoreMenuOpen] = useState(false);
@@ -68,7 +67,6 @@ const Sidebar = ({ open, setOpen }) => {
   };
 
   const handleMouseLeave = () => {
-    // Só fecha se NÃO estiver pinada e não for mobile
     if (!isMobile && !isPinned) {
       setOpen(false);
       setStoreMenuOpen(false);
@@ -78,24 +76,25 @@ const Sidebar = ({ open, setOpen }) => {
   const togglePin = () => {
     const newState = !isPinned;
     setIsPinned(newState);
-    setOpen(true); // Garante que ao pinar ela esteja aberta
+    setOpen(true);
   };
 
   const Menus = [
-    { title: "Meus Dados", icon: <MdSpaceDashboard />, path: "/", key: "dashboard" },
+    { title: "Meus Dados", icon: <MdSpaceDashboard />, path: "/system/perfil", key: "perfil" },
     {
       title: "Cardápio Digital",
       icon: <MdRestaurantMenu />,
       gap: true,
       key: "cardapio",
       subMenu: [
-        { title: "Dashboard", path: "/cardapio/dashboard" },
-        { title: "Produtos", path: "/cardapio/produtos" },
-        { title: "Grupos", path: "/cardapio/grupos" },
-        { title: "QRCode", path: "/cardapio/qrcode" },
-        { title: "WhatsApp", path: "/cardapio/whatsapp" },
-        { title: "Avaliações", path: "/cardapio/avaliacoes" },
-        { title: "Parâmetros", path: "/cardapio/parametros" },
+        { title: "Vendas", path: "/system/cardapio/pedidos" },
+        { title: "Dashboard", path: "/system/cardapio/dashboard" },
+        { title: "Produtos", path: "/system/cardapio/produtos" },
+        { title: "Grupos", path: "/system/cardapio/grupos" },
+        { title: "QRCode", path: "/system/cardapio/qrcode" },
+        { title: "WhatsApp", path: "/system/cardapio/whatsapp" },
+        { title: "Avaliações", path: "/system/cardapio/avaliacoes" },
+        { title: "Parâmetros", path: "/system/cardapio/parametros" },
       ],
     },
     {
@@ -103,20 +102,20 @@ const Sidebar = ({ open, setOpen }) => {
       icon: <MdPointOfSale />,
       key: "pdv",
       subMenu: [
-        { title: "Dashboard", path: "/pdv/dashboard" },
-        { title: "Consultar Caixa", path: "/pdv/caixa" },
+        { title: "Dashboard", path: "/system/pdv/dashboard" },
+        { title: "Consultar Caixa", path: "/system/pdv/caixa" },
       ],
     },
-    { title: "NF-e", icon: <MdReceipt />, path: "/nfe", key: "nfe" },
+    { title: "NF-e", icon: <MdReceipt />, path: "/system/nfe", key: "nfe" },
     {
       title: "Financeiro",
       icon: <MdAttachMoney />,
       key: "financeiro",
       subMenu: [
-        { title: "Visão Geral", path: "/financeiro/resumo" },
-        { title: "Contas a Pagar", path: "/financeiro/pagar" },
-        { title: "Contas a Receber", path: "/financeiro/receber" },
-        { title: "Fluxo de Caixa", path: "/financeiro/fluxo" },
+        { title: "Visão Geral", path: "/system/financeiro/resumo" },
+        { title: "Contas a Pagar", path: "/system/financeiro/pagar" },
+        { title: "Contas a Receber", path: "/system/financeiro/receber" },
+        { title: "Fluxo de Caixa", path: "/system/financeiro/fluxo" },
       ],
     },
     {
@@ -124,40 +123,35 @@ const Sidebar = ({ open, setOpen }) => {
       icon: <GoGraph />,
       key: "faturamento",
       subMenu: [
-        { title: "Dashboard", path: "/faturamento/dashboard" },
-        { title: "Histórico de Vendas", path: "/faturamento/vendas" },
-        { title: "Relatórios", path: "/faturamento/relatorios" },
+        { title: "Dashboard", path: "/system/faturamento/dashboard" },
+        { title: "Histórico de Vendas", path: "/system/faturamento/vendas" },
+        { title: "Relatórios", path: "/system/faturamento/relatorios" },
       ],
     },
-{
-  title: "Sistema",
-  icon: <FaServer />, // Ícone alterado aqui
-  key: "sistema",
-  subMenu: [
-    { title: "Licenças", path: "/sistema/licencas" },
-    { title: "Cadastrar Cartão", path: "/sistema/cartao" },
-    { title: "Faturas", path: "/sistema/faturas" },
-    { title: "Backup", path: "/sistema/bckp" },
-    { title: "Sugestões", path: "/sistema/sugestoes" },
-    { title: "Downloads", path: "/sistema/downloads" },
-  ],
-},
-
-        {
+    {
+      title: "Sistema",
+      icon: <FaServer />,
+      key: "sistema",
+      subMenu: [
+        { title: "Licenças", path: "/system/sistema/licencas" },
+        { title: "Cadastrar Cartão", path: "/system/sistema/cartao" },
+        { title: "Faturas", path: "/system/sistema/faturas" },
+        { title: "Backup", path: "/system/sistema/bckp" },
+        { title: "Sugestões", path: "/system/sistema/sugestoes" },
+        { title: "Downloads", path: "/system/sistema/downloads" },
+      ],
+    },
+    {
       title: "Suporte",
-      icon: <MdOutlineHeadsetMic />, // Usando o ícone de headset que você já importou
-      path: "/suporte",
+      icon: <MdOutlineHeadsetMic />, 
+      path: "/system/suporte",
       key: "suporte"
     },
-
     {
       title: "Configurações",
-      icon: <FaGears />,
-      subMenu: [
-        { title: "Geral", path: "/settings/general" },
-        { title: "Segurança", path: "/settings/security" },
-      ],
-      key: "settings",
+      icon: <FaGears />, 
+      path: "/system/configuracoes/geral", 
+      key: "configuracoes"
     },
   ];
 
@@ -196,7 +190,7 @@ const Sidebar = ({ open, setOpen }) => {
           ${!open ? "invisible md:visible" : "visible"}
         `}
       >
-        {/* BOTÃO FIXAR/SOLTAR (Desktop) - SUBSTITUI O ANTIGO TOGGLE */}
+        {/* BOTÃO FIXAR/SOLTAR */}
         <div
           title={isPinned ? "Desafixar Sidebar" : "Fixar Sidebar"}
           className={`hidden md:flex absolute cursor-pointer -right-3 top-9 w-7 h-7 bg-white border-2 rounded-full text-sm items-center justify-center transition-all duration-300 z-50 shadow-md hover:scale-110 
@@ -233,6 +227,7 @@ const Sidebar = ({ open, setOpen }) => {
             </h1>
           </div>
 
+          {/* MENU DE LOJAS */}
           <div className="mb-6 relative" ref={storeMenuRef}>
             <button
                 onClick={() => {
@@ -278,7 +273,7 @@ const Sidebar = ({ open, setOpen }) => {
             )}
           </div>
 
-          <ul className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide px-1 pb-24 space-y-2">
+          <ul className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide px-1 pb-4 space-y-2">
             {Menus.map((Menu, index) => (
               <li key={index} className={`${Menu.gap ? "mt-8" : "mt-1"}`}>
                 {Menu.subMenu ? (
@@ -334,6 +329,22 @@ const Sidebar = ({ open, setOpen }) => {
               </li>
             ))}
           </ul>
+
+          {/* --- 2. BOTÃO SAIR (FIXADO NO RODAPÉ DO MENU) --- */}
+          <div className="border-t border-gray-200 mt-2 pt-2">
+            <Link
+              href="/login" // Link para sua tela de login
+              className={`group flex items-center py-3 px-3 rounded-lg transition-all duration-200 border border-transparent hover:bg-red-50 hover:border-red-100 ${open ? "gap-3 justify-start" : "justify-center"}`}
+            >
+              <span className="text-2xl text-gray-500 group-hover:text-red-600 transition-colors shrink-0">
+                <MdLogout />
+              </span>
+              <span className={`font-medium whitespace-nowrap transition-all duration-200 text-gray-600 group-hover:text-red-600 ${!open ? "opacity-0 w-0 overflow-hidden" : "opacity-100 w-auto"}`}>
+                Sair do Sistema
+              </span>
+            </Link>
+          </div>
+
         </div>
       </nav>
     </>

@@ -1,50 +1,19 @@
-// app/layout.js (ou layout.jsx)
-"use client";
-
-import { useState, ReactNode } from "react";
-// AJUSTE O CAMINHO ABAIXO conforme onde você salvou o arquivo no Passo 2
-import Sidebar from "@/components/Sidebar"; 
 import "./globals.css";
-import { Inter } from 'next/font/google';
- import Header from "../components/header/Header"; // Import the new Header
-import "./globals.css";
+// Se estiver usando fontes do Google, configure aqui, senão remova a importação
+import { Inter } from "next/font/google";
 
+const inter = Inter({ subsets: ["latin"] });
 
-const inter = Inter({ subsets: ['latin'] });
+export const metadata = {
+  title: "Área do Cliente - Datacaixa",
+  description: "Área do Cliente",
+};
 
-export default function RootLayout({ children }: { children: ReactNode }) {
-  // O estado que controla se a sidebar está expandida (true) ou recolhida (false)
-  // Inicia como true (expandida)
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-br">
-      <body className={`${inter.className} bg-red-50 min-h-screen`}>
-        
-        {/* Renderiza a Sidebar.
-          Passamos o estado e a função para atualizar o estado como props.
-        */}
-        <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
-
-        {/* Conteúdo Principal (main).
-          A margem esquerda (ml) se ajusta dinamicamente:
-          - Se sidebarOpen for true: ml-72 (largura da sidebar expandida)
-          - Se sidebarOpen for false: ml-20 (largura da sidebar recolhida)
-          A classe 'transition-all' garante que o ajuste da margem seja suave.
-        */}
-        <main
-          className={`flex-1 p-6 transition-all duration-300 ease-in-out ${
-            sidebarOpen ? "md:ml-80" : "md:ml-20"
-          }`}
-        >
-          {/* Aqui será renderizada a sua página de cadastro (o children).
-            Adicionamos um container para centralizar e limitar a largura em telas grandes.
-          */}
-          <div className="max-w-[2000px] mx-auto">
-             {children}
-          </div>
-        </main>
-        
+    <html lang="pt-BR">
+      <body className={`${inter.className} antialiased bg-gray-50 text-gray-900`}>
+        {children}
       </body>
     </html>
   );

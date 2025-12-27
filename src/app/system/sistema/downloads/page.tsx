@@ -55,7 +55,7 @@ export default function DownloadsPage() {
                   alt={item.id} 
                   className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-300"
                   onError={(e) => {
-                    e.currentTarget.src = "https://via.placeholder.com/64?text=Icon";
+                    e.currentTarget.src = "https://www.projetoacbr.com.br/forum/uploads/monthly_2022_11/logo-com-borda.png.2fc8d2cff4fd1e0c59041b0fb78a178e.png"; 
                   }}
                 />
               </div>
