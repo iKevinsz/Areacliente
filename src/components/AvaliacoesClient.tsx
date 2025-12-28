@@ -7,9 +7,9 @@ import {
   FaReply, 
   FaCheckDouble,
   FaSearch,
-  FaPaperPlane // Ícone para o botão de enviar
+  FaPaperPlane 
 } from "react-icons/fa";
-import { responderAvaliacao } from "@/app/actions"; // <--- 1. IMPORTANTE: Importe a ação
+import { responderAvaliacao } from "@/app/actions";
 
 interface AvaliacaoDB {
   id: number;
@@ -30,7 +30,7 @@ export default function AvaliacoesClient({ dadosDoBanco = [] }: AvaliacoesClient
   const [replyingId, setReplyingId] = useState<number | null>(null);
   const [replyText, setReplyText] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [isSending, setIsSending] = useState(false); // Estado de carregamento
+  const [isSending, setIsSending] = useState(false);
 
   const reviews = useMemo(() => {
     if (!dadosDoBanco) return [];
@@ -67,23 +67,17 @@ export default function AvaliacoesClient({ dadosDoBanco = [] }: AvaliacoesClient
     return matchesStatus && matchesSearch;
   });
 
-  // --- 2. NOVA FUNÇÃO DE ENVIAR RESPOSTA ---
   const handleReplySubmit = async (id: number) => {
-    if (!replyText.trim()) return; // Não envia se estiver vazio
-
-    setIsSending(true); // Ativa loading
-
-    // Chama o Server Action
+    if (!replyText.trim()) return;
+    setIsSending(true);
     const result = await responderAvaliacao(id, replyText);
-
     if (result.success) {
       setReplyingId(null);
       setReplyText("");
     } else {
       alert("Erro ao salvar resposta. Tente novamente.");
     }
-
-    setIsSending(false); // Desativa loading
+    setIsSending(false);
   };
 
   const renderStars = (nota: number) => {
@@ -101,23 +95,21 @@ export default function AvaliacoesClient({ dadosDoBanco = [] }: AvaliacoesClient
       
       {/* HEADER & STATS */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-        {/* Card de Nota Média */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-center items-center text-center">
           <h2 className="text-gray-500 font-medium mb-2 text-sm md:text-base">Nota Geral</h2>
           <div className="flex items-center gap-3">
             <span className="text-4xl md:text-5xl font-bold text-gray-800">{stats.media}</span>
             <div className="text-left">
               <div className="flex text-yellow-400 text-base md:text-lg mb-1">
-                 {[...Array(5)].map((_,i) => (
+                  {[...Array(5)].map((_,i) => (
                     i < Math.round(Number(stats.media)) ? <FaStar key={i}/> : <FaRegStar key={i} className="text-gray-300"/>
-                 ))}
+                  ))}
               </div>
               <p className="text-xs md:text-sm text-gray-400">{stats.total} avaliações</p>
             </div>
           </div>
         </div>
 
-        {/* Card de Distribuição */}
         <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <h2 className="text-gray-500 font-medium mb-4 text-sm md:text-base">Distribuição de Notas</h2>
           <div className="space-y-2">
@@ -142,12 +134,13 @@ export default function AvaliacoesClient({ dadosDoBanco = [] }: AvaliacoesClient
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="w-full md:w-auto overflow-x-auto pb-1 md:pb-0 scrollbar-hide">
           <div className="flex bg-white p-1 rounded-lg border border-gray-200 shadow-sm min-w-max">
-            <button onClick={() => setFilterStatus("all")} className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${filterStatus === 'all' ? 'bg-blue-50 text-blue-600' : 'text-gray-500 hover:bg-gray-50'}`}>Todas</button>
-            <button onClick={() => setFilterStatus("pending")} className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${filterStatus === 'pending' ? 'bg-yellow-50 text-yellow-700' : 'text-gray-500 hover:bg-gray-50'}`}>
+            {/* Adicionado cursor-pointer nos filtros */}
+            <button onClick={() => setFilterStatus("all")} className={`px-4 py-2 rounded-md text-sm font-medium transition-all cursor-pointer ${filterStatus === 'all' ? 'bg-blue-50 text-blue-600' : 'text-gray-500 hover:bg-gray-50'}`}>Todas</button>
+            <button onClick={() => setFilterStatus("pending")} className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 cursor-pointer ${filterStatus === 'pending' ? 'bg-yellow-50 text-yellow-700' : 'text-gray-500 hover:bg-gray-50'}`}>
               Pendentes
               <span className="bg-yellow-200 text-yellow-800 text-[10px] px-1.5 py-0.5 rounded-full">{reviews.filter(r => r.status === 'pending').length}</span>
             </button>
-            <button onClick={() => setFilterStatus("replied")} className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${filterStatus === 'replied' ? 'bg-green-50 text-green-700' : 'text-gray-500 hover:bg-gray-50'}`}>Respondidas</button>
+            <button onClick={() => setFilterStatus("replied")} className={`px-4 py-2 rounded-md text-sm font-medium transition-all cursor-pointer ${filterStatus === 'replied' ? 'bg-green-50 text-green-700' : 'text-gray-500 hover:bg-gray-50'}`}>Respondidas</button>
           </div>
         </div>
 
@@ -212,13 +205,17 @@ export default function AvaliacoesClient({ dadosDoBanco = [] }: AvaliacoesClient
                         disabled={isSending}
                       ></textarea>
                       <div className="flex justify-end gap-2 mt-3">
-                        <button onClick={() => setReplyingId(null)} className="px-3 py-2 text-xs md:text-sm text-gray-500 hover:text-gray-700" disabled={isSending}>
+                        <button 
+                          onClick={() => setReplyingId(null)} 
+                          className="px-3 py-2 text-xs md:text-sm text-gray-500 hover:text-gray-700 cursor-pointer disabled:cursor-not-allowed" 
+                          disabled={isSending}
+                        >
                           Cancelar
                         </button>
                         <button 
                           onClick={() => handleReplySubmit(review.id)}
                           disabled={isSending || !replyText.trim()}
-                          className="px-4 py-2 bg-blue-600 text-white text-xs md:text-sm rounded-md hover:bg-blue-700 font-medium flex items-center gap-2 disabled:opacity-50"
+                          className="px-4 py-2 bg-blue-600 text-white text-xs md:text-sm rounded-md hover:bg-blue-700 font-medium flex items-center gap-2 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
                         >
                           {isSending ? 'Enviando...' : <><FaPaperPlane size={12}/> Enviar</>}
                         </button>
@@ -227,7 +224,7 @@ export default function AvaliacoesClient({ dadosDoBanco = [] }: AvaliacoesClient
                   ) : (
                     <button 
                       onClick={() => setReplyingId(review.id)}
-                      className="flex items-center gap-2 text-blue-600 text-sm font-medium hover:text-blue-800 hover:bg-blue-50 px-3 py-2 rounded-md transition-colors -ml-3"
+                      className="flex items-center gap-2 text-blue-600 text-sm font-medium hover:text-blue-800 hover:bg-blue-50 px-3 py-2 rounded-md transition-colors -ml-3 cursor-pointer"
                     >
                       <FaReply /> Responder
                     </button>
