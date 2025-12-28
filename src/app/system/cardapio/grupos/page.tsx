@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client'
-import GruposClient from "@/components/GruposClient";
+import GruposClient from "@/app/system/cardapio/grupos/GruposClient";
 
 const globalForPrisma = global as unknown as { prisma: PrismaClient }
 export const prisma = globalForPrisma.prisma || new PrismaClient()

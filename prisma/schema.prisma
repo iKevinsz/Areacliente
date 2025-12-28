@@ -7,7 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// --- NOVAS TABELAS ADICIONADAS ---
+// --- USUÁRIOS E AUTENTICAÇÃO ---
 
 model Usuario {
   id       Int      @id @default(autoincrement())
@@ -17,9 +17,11 @@ model Usuario {
   criadoEm DateTime @default(now())
 }
 
+// --- EMPRESA E CONFIGURAÇÕES ---
+
 model Empresa {
-  id                Int         @id @default(autoincrement())
-  cnpj              String      @unique
+  id                Int     @id @default(autoincrement())
+  cnpj              String  @unique
   ie                String?
   im                String?
   segmento          String?
@@ -38,20 +40,108 @@ model Empresa {
   contato           String?
   email             String?
   site              String?
-  logo              String?     @db.LongText
-  fusoHorario       String?
-  categorias        String?
-  tempoEstimado     String?
-  tempoEntrega      String?
-  linkLoja          String?
-  whatsapp          String?
-  facebook          String?
-  instagram         String?
-  youtube           String?
-  twitter           String?
-  Grupo             Grupo[]
-  Avaliacao         Avaliacao[]
+  logo              String? @db.LongText
+  
+  // -- Links e Redes Sociais --
+  linkLoja  String?
+  whatsapp  String?
+  facebook  String?
+  instagram String?
+  youtube   String?
+  twitter   String?
+
+  // -- Configurações de Cardápio Digital (Antigas/Visuais) --
+  fusoHorario   String?
+  categorias    String?
+  tempoEstimado String?
+  tempoEntrega  String?
+
+  // --- NOVOS CAMPOS DE PARÂMETROS (FUNCIONALIDADES) ---
+  lojaFechada     Boolean @default(false)
+  ocultarCardapio Boolean @default(false)
+  enviarWhatsapp  Boolean @default(true)
+  cpfObrigatorio  Boolean @default(true)
+  cepObrigatorio  Boolean @default(false)
+  calculoPreco    String  @default("media") // "media" ou "maior"
+
+  valorMinimo Decimal @default(0.00) @db.Decimal(10, 2)
+
+  // Configurações Complexas (JSON)
+  configPagamento Json? // Guarda: { metodos: {}, gateways: {}, chaves: {} }
+  configEntrega   Json? // Guarda: { metodos: {}, freteGratis: 0, taxaFixa: 0, percentual: 0, tipoTaxa: "km" }
+
+  // --- RELACIONAMENTOS ---
+  Grupo         Grupo[]
+  Avaliacao     Avaliacao[]
+  
+  // Novos relacionamentos de parâmetros
+  horarios      HorarioFuncionamento[]
+  pausas        Pausa[]
+  cupons        Cupom[]
+  regrasFrete   RegraFrete[]
+  excecoesFrete ExcecaoFrete[]
+
+  contasPagar   ContaPagar[]
 }
+
+// --- NOVOS MODELS PARA PARÂMETROS ---
+
+model HorarioFuncionamento {
+  id        Int     @id @default(autoincrement())
+  empresaId Int
+  empresa   Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  dia       String // Segunda, Terça...
+  diaIndex  Int // 0-6 (Domingo-Sábado)
+  ativo     Boolean @default(true)
+  inicio    String? // "08:00"
+  fim       String? // "18:00"
+}
+
+model Pausa {
+  id        Int      @id @default(autoincrement())
+  empresaId Int
+  empresa   Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  nome      String
+  inicio    DateTime
+  fim       DateTime
+}
+
+model Cupom {
+  id           Int       @id @default(autoincrement())
+  empresaId    Int
+  empresa      Empresa   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  codigo       String
+  tipoDesconto String // "porcentagem" ou "fixo"
+  valor        Decimal   @db.Decimal(10, 2)
+  minimoCompra Decimal   @default(0) @db.Decimal(10, 2)
+  limiteUso    Int       @default(0)
+  validade     DateTime?
+  ativo        Boolean   @default(true)
+}
+
+model RegraFrete {
+  id         Int      @id @default(autoincrement())
+  empresaId  Int
+  empresa    Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  tipo       String // "km" ou "bairro"
+  // Para KM
+  kmMin      Decimal? @db.Decimal(10, 2)
+  kmMax      Decimal? @db.Decimal(10, 2)
+  // Para Bairro
+  nomeBairro String?
+
+  valor Decimal @db.Decimal(10, 2)
+}
+
+model ExcecaoFrete {
+  id        Int     @id @default(autoincrement())
+  empresaId Int
+  empresa   Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  cep       String
+  valor     Decimal @db.Decimal(10, 2)
+}
+
+// --- CATALOGO E PRODUTOS ---
 
 model Grupo {
   id           Int                @id @default(autoincrement())
@@ -65,34 +155,19 @@ model Grupo {
   complementos GrupoComplemento[]
 }
 
-model Avaliacao {
-  id          Int      @id @default(autoincrement())
-  nota        Int
-  comentario  String?
-  clienteNome String   @default("Cliente Anônimo")
-  resposta    String?
-  tags        String?
-  criadoEm    DateTime @default(now())
-  empresaId   Int
-  empresa     Empresa  @relation(fields: [empresaId], references: [id])
-}
-
-// --- TABELAS EXISTENTES (CORRIGIDAS) ---
-
 model Produto {
-  id                 Int     @id @default(autoincrement())
-  nome               String
-  descricao          String? @db.Text // Adicionado de volta
-  categoria          String?
-  preco              Decimal @db.Decimal(10, 2)
-  imagem             String? @db.LongText
-  ativo              Boolean @default(true)
-  estoque            Int     @default(0)
+  id               Int      @id @default(autoincrement())
+  nome             String
+  descricao        String?  @db.Text
+  categoria        String?
+  preco            Decimal  @db.Decimal(10, 2)
+  imagem           String?  @db.LongText
+  ativo            Boolean  @default(true)
+  estoque          Int      @default(0)
   permiteComplemento Boolean @default(false)
-  visivelOnline      Boolean @default(true)
-
-  criadoEm     DateTime @default(now()) // Adicionado de volta
-  atualizadoEm DateTime @updatedAt // Adicionado de volta
+  visivelOnline    Boolean  @default(true)
+  criadoEm         DateTime @default(now())
+  atualizadoEm     DateTime @updatedAt
 
   // Relações
   grupoId      Int?
@@ -107,7 +182,7 @@ model Variacao {
   nome      String
   preco     Decimal @db.Decimal(10, 2)
   produtoId Int
-  produto   Produto @relation(fields: [produtoId], references: [id])
+  produto   Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
 }
 
 model Complemento {
@@ -115,8 +190,29 @@ model Complemento {
   nome      String
   preco     Decimal @db.Decimal(10, 2)
   produtoId Int
-  produto   Produto @relation(fields: [produtoId], references: [id])
+  produto   Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
 }
+
+// --- GRUPOS ADICIONAIS ---
+
+model GrupoVariacao {
+  id      Int    @id @default(autoincrement())
+  nome    String
+  grupoId Int
+  grupo   Grupo  @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+}
+
+model GrupoComplemento {
+  id          Int     @id @default(autoincrement())
+  nome        String
+  preco       Decimal @db.Decimal(10, 2)
+  maxQtd      Int     @default(1)
+  obrigatorio Boolean @default(false)
+  grupoId     Int
+  grupo       Grupo   @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+}
+
+// --- PEDIDOS E AVALIAÇÕES ---
 
 model Pedido {
   id      Int          @id @default(autoincrement())
@@ -138,19 +234,28 @@ model ItemPedido {
   produto    Produto @relation(fields: [produtoId], references: [id])
 }
 
-model GrupoVariacao {
-  id      Int    @id @default(autoincrement())
-  nome    String
-  grupoId Int
-  grupo   Grupo  @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+model Avaliacao {
+  id          Int      @id @default(autoincrement())
+  nota        Int
+  comentario  String?
+  clienteNome String   @default("Cliente Anônimo")
+  resposta    String?
+  tags        String?
+  criadoEm    DateTime @default(now())
+  empresaId   Int
+  empresa     Empresa  @relation(fields: [empresaId], references: [id])
 }
 
-model GrupoComplemento {
-  id          Int     @id @default(autoincrement())
-  nome        String
-  preco       Decimal @db.Decimal(10, 2)
-  maxQtd      Int     @default(1)
-  obrigatorio Boolean @default(false)
-  grupoId     Int
-  grupo       Grupo   @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+model ContaPagar {
+  id          Int      @id @default(autoincrement())
+  empresaId   Int
+  empresa     Empresa  @relation(fields: [empresaId], references: [id])
+  descricao   String
+  fornecedor  String?
+  valor       Decimal  @db.Decimal(10, 2)
+  vencimento  DateTime
+  status      String   @default("pendente") // pendente, pago, vencido
+  categoria   String?
+  criadoEm    DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
 }

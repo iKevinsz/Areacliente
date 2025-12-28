@@ -1,7 +1,7 @@
 // src/app/system/cardapio/produtos/page.tsx
 
 import { PrismaClient } from '@prisma/client'
-import ProdutosClient from "@/components/ProdutosClient";
+import ProdutosClient from "@/app/system/cardapio/produtos/ProdutosClient";
 
 const globalForPrisma = global as unknown as { prisma: PrismaClient }
 export const prisma = globalForPrisma.prisma || new PrismaClient()

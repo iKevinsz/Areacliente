@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client'
-import AvaliacoesClient from "@/components/AvaliacoesClient";
+import AvaliacoesClient from "@/app/system/cardapio/avaliacoes/AvaliacoesClient";
 
 // 1. Configura a conexão com o banco
 const globalForPrisma = global as unknown as { prisma: PrismaClient }
