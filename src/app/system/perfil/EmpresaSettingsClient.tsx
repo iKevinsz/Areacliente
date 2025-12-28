@@ -118,12 +118,11 @@ export default function EmpresaSettingsPage({ empresaInicial }: { empresaInicial
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-  const methods = useForm<EmpresaFormData>({
-    resolver: zodResolver(empresaSchema),
+  const methods = useForm({
     defaultValues: empresaInicial
   });
 
-  const onSubmit = async (data: EmpresaFormData) => {
+  const onSubmit = async (data: any) => {
     setIsSaving(true);
     try {
       const res = await updateEmpresaSettings(empresaInicial.id, { ...data, logo: logoPreview });
