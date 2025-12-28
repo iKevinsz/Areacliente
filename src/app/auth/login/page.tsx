@@ -2,11 +2,13 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link"; // Importação do componente Link
+import Link from "next/link";
 import { 
   Mail, Lock, ArrowRight, Loader2, 
-  Eye, EyeOff, CheckCircle2 
+  Eye, EyeOff, CheckCircle2, AlertTriangle 
 } from "lucide-react";
+// Importe a action que criamos no passo anterior
+import { loginUser } from "@/app/actions/auth";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -15,16 +17,23 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  // Adicione este estado para exibir erros do banco de dados
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrorMessage(""); // Limpa erros anteriores
 
-    // Simulação de delay de autenticação
-    setTimeout(() => {
+    // Chama a Server Action de autenticação real
+    const result = await loginUser({ email, password });
+
+    if (result.success) {
+      router.push("/system/perfil");
+    } else {
+      setErrorMessage(result.error || "Erro ao realizar login.");
       setIsLoading(false);
-      router.push("/system/perfil"); // Ajuste para sua rota inicial
-    }, 2000);
+    }
   };
 
   return (
@@ -32,33 +41,18 @@ export default function LoginPage() {
       
       {/* LADO ESQUERDO: BRANDING & LOGO */}
       <div className="hidden lg:flex w-1/2 bg-[#003366] relative items-center justify-center p-12 overflow-hidden">
-        
-        {/* Elementos Decorativos de Fundo */}
         <div className="absolute top-0 left-0 w-full h-full z-0 opacity-20 pointer-events-none">
            <div className="absolute top-[-20%] left-[-20%] w-[500px] h-[500px] bg-blue-400 rounded-full blur-[100px] animate-pulse delay-75"></div>
            <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-orange-500 rounded-full blur-[120px] animate-pulse"></div>
         </div>
 
         <div className="relative z-10 flex flex-col items-center text-center space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-1000">
-          
           <div className="relative group">
             <div className="absolute -inset-2 bg-gradient-to-r from-blue-500 to-orange-500 rounded-3xl blur-xl opacity-30 group-hover:opacity-50 transition-opacity duration-500"></div>
-            
             <img 
               src="/datacaixa-facebook-2.jpg" 
               alt="Logo Datacaixa" 
               className="relative h-100 w-auto object-contain drop-shadow-xl transform group-hover:scale-105 transition-transform duration-500 border-white/20 rounded-3xl bg-white/5 backdrop-blur-sm p-2"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-                e.currentTarget.parentElement!.innerHTML = `
-                  <div class="flex flex-col items-center">
-                    <div class="w-32 h-32 bg-white/10 rounded-xl flex items-center justify-center mb-4 backdrop-blur-sm border border-white/20">
-                        <div class="w-12 h-12 bg-[#FF6600] rounded-md shadow-lg"></div>
-                    </div>
-                    <span class="text-white font-bold text-3xl tracking-tight drop-shadow-md">Datacaixa</span>
-                  </div>
-                `;
-              }}
             />
           </div>
 
@@ -82,6 +76,14 @@ export default function LoginPage() {
 
           <form onSubmit={handleLogin} className="space-y-6">
             
+            {/* ALERT DE ERRO */}
+            {errorMessage && (
+              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm flex items-center gap-2 animate-in fade-in zoom-in-95">
+                <AlertTriangle size={18} />
+                <span className="font-medium">{errorMessage}</span>
+              </div>
+            )}
+
             {/* INPUT EMAIL */}
             <div className={`group relative transition-all duration-300 ${focusedField === 'email' ? 'scale-[1.02]' : ''}`}>
               <label className="text-xs font-bold text-gray-500 uppercase ml-1 mb-1 block">E-mail</label>
@@ -93,7 +95,7 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   onFocus={() => setFocusedField('email')}
                   onBlur={() => setFocusedField(null)}
-                  className="w-full ml-3 outline-none text-sm font-medium text-gray-700 placeholder:text-gray-300 bg-transparent"
+                  className="w-full ml-3 outline-none text-sm font-medium text-gray-700 bg-transparent"
                   placeholder="exemplo@datacaixa.com.br"
                   required
                 />
@@ -104,15 +106,12 @@ export default function LoginPage() {
             <div className={`group relative transition-all duration-300 ${focusedField === 'password' ? 'scale-[1.02]' : ''}`}>
               <div className="flex justify-between items-center mb-1 ml-1">
                 <label className="text-xs font-bold text-gray-500 uppercase">Senha</label>
-                
-                {/* --- AQUI ESTÁ O LINK PARA A TELA DE ESQUECEU SENHA --- */}
                 <Link 
                   href="/auth/forgot-password" 
                   className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
                 >
                   Esqueceu a senha?
                 </Link>
-
               </div>
               <div className={`flex items-center border-2 rounded-xl px-4 py-3 bg-white transition-colors ${focusedField === 'password' ? 'border-blue-500 shadow-lg shadow-blue-100' : 'border-gray-200'}`}>
                 <Lock className={`w-5 h-5 transition-colors ${focusedField === 'password' ? 'text-blue-500' : 'text-gray-400'}`} />
@@ -122,7 +121,7 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   onFocus={() => setFocusedField('password')}
                   onBlur={() => setFocusedField(null)}
-                  className="w-full ml-3 outline-none text-sm font-medium text-gray-700 placeholder:text-gray-300 bg-transparent"
+                  className="w-full ml-3 outline-none text-sm font-medium text-gray-700 bg-transparent"
                   placeholder="••••••••"
                   required
                 />
@@ -155,14 +154,23 @@ export default function LoginPage() {
           </form>
           
           {/* RODAPÉ DO FORMULÁRIO */}
-          <div className="text-center">
+          <div className="text-center space-y-4">
             <p className="text-sm text-gray-500">
               Ainda não tem uma conta?{' '}
-              <a 
-                href="https://wa.me/5511999999999?text=Olá,%20gostaria%20de%20ajuda%20com%20o%20acesso%20ao%20sistema." 
-                target="_blank" 
-                rel="noopener noreferrer"
+              <Link 
+                href="/auth/register" 
                 className="font-bold text-blue-600 hover:text-blue-800 transition-colors hover:underline cursor-pointer"
+              >
+                Criar conta agora
+              </Link>
+            </p>
+            
+            <p className="text-xs text-gray-400">
+              Precisa de ajuda?{' '}
+              <a 
+                href="https://wa.me/5511999999999" 
+                target="_blank" 
+                className="font-medium text-gray-500 hover:text-blue-600 underline"
               >
                 Fale com o suporte
               </a>

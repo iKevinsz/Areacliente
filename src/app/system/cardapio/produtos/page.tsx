@@ -1,37 +1,38 @@
+// src/app/system/cardapio/produtos/page.tsx
+
 import { PrismaClient } from '@prisma/client'
 import ProdutosClient from "@/components/ProdutosClient";
 
-// 1. Configuração do Banco de Dados
 const globalForPrisma = global as unknown as { prisma: PrismaClient }
 export const prisma = globalForPrisma.prisma || new PrismaClient()
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
-// 2. Função que busca os produtos no banco
-async function getProdutos() {
-  // Busca no banco e ordena por nome
+async function getData() {
+  // Busca produtos E suas variações
   const produtos = await prisma.produto.findMany({
-    orderBy: {
-      nome: 'asc'
-    }
+    orderBy: { nome: 'asc' },
+    include: { variacoes: true } 
   });
 
-  // Converte "Decimal" (do banco) para "Number" (do Javascript) para não dar erro na tela
-  // Isso é necessário porque o Next.js as vezes reclama de passar números decimais diretos
-  const produtosFormatados = produtos.map(produto => ({
-    ...produto,
-    preco: Number(produto.preco) 
-  }));
+  // Busca grupos E suas variações padrão
+  const grupos = await prisma.grupo.findMany({
+    where: { ativo: true },
+    orderBy: { ordem: 'asc' },
+    include: { variacoes: true } // <--- ISSO É ESSENCIAL
+  });
 
-  return produtosFormatados;
+  return { 
+    produtos: JSON.parse(JSON.stringify(produtos)), 
+    grupos: JSON.parse(JSON.stringify(grupos)) 
+  };
 }
 
-// 3. A Página que carrega tudo
 export default async function Page() {
-  const dados = await getProdutos();
+  const { produtos, grupos } = await getData();
 
   return (
     <main>
-      <ProdutosClient produtos={dados} />
+      <ProdutosClient produtos={produtos} gruposDisponiveis={grupos} />
     </main>
   );
 }

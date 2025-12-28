@@ -6,10 +6,11 @@ import {
   FaRegStar, 
   FaReply, 
   FaCheckDouble,
-  FaSearch
+  FaSearch,
+  FaPaperPlane // Ícone para o botão de enviar
 } from "react-icons/fa";
+import { responderAvaliacao } from "@/app/actions"; // <--- 1. IMPORTANTE: Importe a ação
 
-// 1. Definimos a interface dos dados que vêm do Prisma (Banco de Dados)
 interface AvaliacaoDB {
   id: number;
   clienteNome: string;
@@ -21,65 +22,69 @@ interface AvaliacaoDB {
 }
 
 interface AvaliacoesClientProps {
-  // AQUI ESTA A CORREÇÃO: dadosDoBanco agora é opcional ou tem valor padrão
-  dadosDoBanco?: AvaliacaoDB[]; 
+  dadosDoBanco?: AvaliacaoDB[];
 }
 
-// Adicionamos " = []" para evitar o erro de undefined se a prop falhar
 export default function AvaliacoesClient({ dadosDoBanco = [] }: AvaliacoesClientProps) {
   const [filterStatus, setFilterStatus] = useState("all");
   const [replyingId, setReplyingId] = useState<number | null>(null);
   const [replyText, setReplyText] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [isSending, setIsSending] = useState(false); // Estado de carregamento
 
-  // 2. Transformamos os dados do banco para o formato visual da tela
   const reviews = useMemo(() => {
-    // Proteção extra: Se dadosDoBanco for nulo/undefined, retorna array vazio
     if (!dadosDoBanco) return [];
-
     return dadosDoBanco.map((item) => ({
       id: item.id,
       cliente: item.clienteNome,
-      // Formata a data para dia/mês/ano
       data: new Date(item.criadoEm).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'}),
       nota: item.nota,
       comentario: item.comentario || "",
-      // Converte string "Sabor,Entrega" em array
       tags: item.tags ? item.tags.split(",") : [],
-      // Define status baseado se tem resposta ou não
       status: item.resposta ? "replied" : "pending",
       resposta: item.resposta || ""
     }));
   }, [dadosDoBanco]);
 
-  // 3. Cálculo Dinâmico das Estatísticas (Média e Distribuição)
   const stats = useMemo(() => {
     const total = reviews.length;
     if (total === 0) return { media: 0, total: 0, distribuicao: [0, 0, 0, 0, 0] };
-
     const somaNotas = reviews.reduce((acc, curr) => acc + curr.nota, 0);
     const media = (somaNotas / total).toFixed(1);
-
-    // Conta quantas notas de 5, 4, 3, 2, 1 existem
-    const counts = [0, 0, 0, 0, 0]; // Index 0 = nota 5, Index 4 = nota 1
+    const counts = [0, 0, 0, 0, 0];
     reviews.forEach(r => {
-        const index = 5 - r.nota; // nota 5 vira index 0
+        const index = 5 - r.nota;
         if (index >= 0 && index < 5) counts[index]++;
     });
-
-    // Converte para porcentagem para a barra de progresso
     const distribuicao = counts.map(count => Math.round((count / total) * 100));
-
     return { media, total, distribuicao };
   }, [reviews]);
 
-  // Filtragem combinada (Status + Busca)
   const filteredReviews = reviews.filter(r => {
     const matchesStatus = filterStatus === 'all' ? true : r.status === filterStatus;
     const matchesSearch = r.cliente.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           r.comentario.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesStatus && matchesSearch;
   });
+
+  // --- 2. NOVA FUNÇÃO DE ENVIAR RESPOSTA ---
+  const handleReplySubmit = async (id: number) => {
+    if (!replyText.trim()) return; // Não envia se estiver vazio
+
+    setIsSending(true); // Ativa loading
+
+    // Chama o Server Action
+    const result = await responderAvaliacao(id, replyText);
+
+    if (result.success) {
+      setReplyingId(null);
+      setReplyText("");
+    } else {
+      alert("Erro ao salvar resposta. Tente novamente.");
+    }
+
+    setIsSending(false); // Desativa loading
+  };
 
   const renderStars = (nota: number) => {
     return (
@@ -89,13 +94,6 @@ export default function AvaliacoesClient({ dadosDoBanco = [] }: AvaliacoesClient
         ))}
       </div>
     );
-  };
-
-  const handleReplySubmit = (id: number) => {
-    // AQUI VOCÊ FUTURAMENTE VAI CHAMAR UMA SERVER ACTION PARA SALVAR NO BANCO
-    alert(`Simulação: Resposta enviada para o ID #${id}: ${replyText}`);
-    setReplyingId(null);
-    setReplyText("");
   };
 
   return (
@@ -144,40 +142,18 @@ export default function AvaliacoesClient({ dadosDoBanco = [] }: AvaliacoesClient
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="w-full md:w-auto overflow-x-auto pb-1 md:pb-0 scrollbar-hide">
           <div className="flex bg-white p-1 rounded-lg border border-gray-200 shadow-sm min-w-max">
-            <button 
-              onClick={() => setFilterStatus("all")}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${filterStatus === 'all' ? 'bg-blue-50 text-blue-600' : 'text-gray-500 hover:bg-gray-50'}`}
-            >
-              Todas
-            </button>
-            <button 
-              onClick={() => setFilterStatus("pending")}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${filterStatus === 'pending' ? 'bg-yellow-50 text-yellow-700' : 'text-gray-500 hover:bg-gray-50'}`}
-            >
+            <button onClick={() => setFilterStatus("all")} className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${filterStatus === 'all' ? 'bg-blue-50 text-blue-600' : 'text-gray-500 hover:bg-gray-50'}`}>Todas</button>
+            <button onClick={() => setFilterStatus("pending")} className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${filterStatus === 'pending' ? 'bg-yellow-50 text-yellow-700' : 'text-gray-500 hover:bg-gray-50'}`}>
               Pendentes
-              {/* Contador dinâmico de pendentes */}
-              <span className="bg-yellow-200 text-yellow-800 text-[10px] px-1.5 py-0.5 rounded-full">
-                {reviews.filter(r => r.status === 'pending').length}
-              </span>
+              <span className="bg-yellow-200 text-yellow-800 text-[10px] px-1.5 py-0.5 rounded-full">{reviews.filter(r => r.status === 'pending').length}</span>
             </button>
-            <button 
-              onClick={() => setFilterStatus("replied")}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${filterStatus === 'replied' ? 'bg-green-50 text-green-700' : 'text-gray-500 hover:bg-gray-50'}`}
-            >
-              Respondidas
-            </button>
+            <button onClick={() => setFilterStatus("replied")} className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${filterStatus === 'replied' ? 'bg-green-50 text-green-700' : 'text-gray-500 hover:bg-gray-50'}`}>Respondidas</button>
           </div>
         </div>
 
         <div className="relative w-full md:w-64">
           <FaSearch className="absolute left-3 top-3 text-gray-400 text-sm" />
-          <input 
-            type="text" 
-            placeholder="Buscar..." 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+          <input type="text" placeholder="Buscar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
         </div>
       </div>
 
@@ -185,16 +161,11 @@ export default function AvaliacoesClient({ dadosDoBanco = [] }: AvaliacoesClient
       <div className="space-y-4">
         {filteredReviews.map((review) => (
           <div key={review.id} className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-gray-100 transition-all hover:border-blue-100 overflow-hidden">
-            {/* Header do Card */}
             <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4">
-              
               <div className="flex items-start gap-4 w-full sm:w-auto min-w-0">
-                {/* Avatar */}
                 <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-white ${review.nota >= 4 ? 'bg-green-500' : review.nota === 3 ? 'bg-yellow-500' : 'bg-red-500'}`}>
                   {review.cliente.charAt(0)}
                 </div>
-                
-                {/* Nome e Estrelas */}
                 <div className="flex-1 min-w-0">
                   <h3 className="font-bold text-gray-800 text-sm md:text-base truncate">{review.cliente}</h3>
                   <div className="flex flex-wrap items-center gap-2 mt-1">
@@ -204,39 +175,26 @@ export default function AvaliacoesClient({ dadosDoBanco = [] }: AvaliacoesClient
                   </div>
                 </div>
               </div>
-
-              {/* Status Badge */}
               <div className="self-start sm:self-auto shrink-0">
                 {review.status === 'replied' ? (
-                    <span className="flex items-center gap-1 px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium border border-green-100 whitespace-nowrap">
-                    <FaCheckDouble size={10} /> Respondida
-                    </span>
+                    <span className="flex items-center gap-1 px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium border border-green-100 whitespace-nowrap"><FaCheckDouble size={10} /> Respondida</span>
                 ) : (
-                    <span className="px-3 py-1 bg-yellow-50 text-yellow-700 rounded-full text-xs font-medium border border-yellow-100 whitespace-nowrap">
-                    Aguardando
-                    </span>
+                    <span className="px-3 py-1 bg-yellow-50 text-yellow-700 rounded-full text-xs font-medium border border-yellow-100 whitespace-nowrap">Aguardando</span>
                 )}
               </div>
             </div>
 
-            {/* Conteúdo */}
-            <p className="text-gray-600 text-sm leading-relaxed mb-4 pl-0 md:pl-14 break-words">
-              "{review.comentario}"
-            </p>
+            <p className="text-gray-600 text-sm leading-relaxed mb-4 pl-0 md:pl-14 break-words">"{review.comentario}"</p>
 
-            {/* Tags */}
             <div className="pl-0 md:pl-14 flex flex-wrap gap-2 mb-4">
               {review.tags.map(tag => (
-                <span key={tag} className="px-2 py-1 bg-gray-100 text-gray-500 text-xs rounded-md border border-gray-200">
-                  {tag}
-                </span>
+                <span key={tag} className="px-2 py-1 bg-gray-100 text-gray-500 text-xs rounded-md border border-gray-200">{tag}</span>
               ))}
             </div>
 
-            {/* Área de Resposta */}
             <div className="pl-0 md:pl-14">
               {review.status === 'replied' ? (
-                <div className="bg-gray-50 p-3 md:p-4 rounded-lg border-l-4 border-blue-500 break-words">
+                <div className="bg-gray-50 p-3 md:p-4 rounded-lg border-l-4 border-blue-500 break-words animate-fade-in">
                   <p className="text-xs text-gray-500 font-bold mb-1">Sua resposta:</p>
                   <p className="text-sm text-gray-700">{review.resposta}</p>
                 </div>
@@ -251,19 +209,18 @@ export default function AvaliacoesClient({ dadosDoBanco = [] }: AvaliacoesClient
                         autoFocus
                         value={replyText}
                         onChange={(e) => setReplyText(e.target.value)}
+                        disabled={isSending}
                       ></textarea>
                       <div className="flex justify-end gap-2 mt-3">
-                        <button 
-                          onClick={() => setReplyingId(null)}
-                          className="px-3 py-2 text-xs md:text-sm text-gray-500 hover:text-gray-700"
-                        >
+                        <button onClick={() => setReplyingId(null)} className="px-3 py-2 text-xs md:text-sm text-gray-500 hover:text-gray-700" disabled={isSending}>
                           Cancelar
                         </button>
                         <button 
                           onClick={() => handleReplySubmit(review.id)}
-                          className="px-4 py-2 bg-blue-600 text-white text-xs md:text-sm rounded-md hover:bg-blue-700 font-medium"
+                          disabled={isSending || !replyText.trim()}
+                          className="px-4 py-2 bg-blue-600 text-white text-xs md:text-sm rounded-md hover:bg-blue-700 font-medium flex items-center gap-2 disabled:opacity-50"
                         >
-                          Enviar
+                          {isSending ? 'Enviando...' : <><FaPaperPlane size={12}/> Enviar</>}
                         </button>
                       </div>
                     </div>
@@ -278,17 +235,11 @@ export default function AvaliacoesClient({ dadosDoBanco = [] }: AvaliacoesClient
                 </>
               )}
             </div>
-
           </div>
         ))}
 
-        {filteredReviews.length === 0 && (
-           <div className="text-center py-10 text-gray-500">
-             Nenhuma avaliação encontrada.
-           </div>
-        )}
+        {filteredReviews.length === 0 && <div className="text-center py-10 text-gray-500">Nenhuma avaliação encontrada.</div>}
       </div>
-      
     </div>
   );
 }

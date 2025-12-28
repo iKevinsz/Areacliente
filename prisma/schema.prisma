@@ -9,58 +9,94 @@ datasource db {
 
 // --- NOVAS TABELAS ADICIONADAS ---
 
+model Usuario {
+  id       Int      @id @default(autoincrement())
+  nome     String
+  email    String   @unique
+  senha    String
+  criadoEm DateTime @default(now())
+}
+
 model Empresa {
-  id         Int         @id @default(autoincrement())
-  nome       String
-  cnpj       String?
-  email      String?
-  grupos     Grupo[]
-  avaliacoes Avaliacao[]
-  criadoEm   DateTime    @default(now())
+  id                Int         @id @default(autoincrement())
+  cnpj              String      @unique
+  ie                String?
+  im                String?
+  segmento          String?
+  razaoSocial       String?
+  nomeFantasia      String?
+  cep               String?
+  endereco          String?
+  numero            String?
+  bairro            String?
+  complemento       String?
+  uf                String?
+  cidade            String?
+  telefone          String?
+  telefoneComercial String?
+  celular           String?
+  contato           String?
+  email             String?
+  site              String?
+  logo              String?     @db.LongText
+  fusoHorario       String?
+  categorias        String?
+  tempoEstimado     String?
+  tempoEntrega      String?
+  linkLoja          String?
+  whatsapp          String?
+  facebook          String?
+  instagram         String?
+  youtube           String?
+  twitter           String?
+  Grupo             Grupo[]
+  Avaliacao         Avaliacao[]
 }
 
 model Grupo {
-  id        Int       @id @default(autoincrement())
-  nome      String
-  empresaId Int
-  empresa   Empresa   @relation(fields: [empresaId], references: [id])
-  produtos  Produto[]
+  id           Int                @id @default(autoincrement())
+  nome         String
+  ordem        Int                @default(0)
+  ativo        Boolean            @default(true)
+  empresaId    Int
+  empresa      Empresa            @relation(fields: [empresaId], references: [id])
+  produtos     Produto[]
+  variacoes    GrupoVariacao[]
+  complementos GrupoComplemento[]
 }
 
 model Avaliacao {
-  id         Int      @id @default(autoincrement())
-  nota       Int
-  comentario String?
-
-  // Campos novos para suportar sua tela
+  id          Int      @id @default(autoincrement())
+  nota        Int
+  comentario  String?
   clienteNome String   @default("Cliente Anônimo")
-  resposta    String?  // "pending" ou "replied"
-  tags        String?  // Ex: "Sabor,Entrega Rápida"
+  resposta    String?
+  tags        String?
   criadoEm    DateTime @default(now())
-
-  empresaId Int
-  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  empresaId   Int
+  empresa     Empresa  @relation(fields: [empresaId], references: [id])
 }
 
-// --- TABELAS EXISTENTES (ATUALIZADAS) ---
+// --- TABELAS EXISTENTES (CORRIGIDAS) ---
 
 model Produto {
-  id           Int      @id @default(autoincrement())
-  nome         String
-  descricao    String?  @db.Text
-  preco        Decimal  @db.Decimal(10, 2) // Recomendado definir precisão para dinheiro
-  categoria    String?
-  estoque      Int
-  imagem       String?  @db.LongText
-  ativo        Boolean
-  
-  criadoEm     DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
+  id                 Int     @id @default(autoincrement())
+  nome               String
+  descricao          String? @db.Text // Adicionado de volta
+  categoria          String?
+  preco              Decimal @db.Decimal(10, 2)
+  imagem             String? @db.LongText
+  ativo              Boolean @default(true)
+  estoque            Int     @default(0)
+  permiteComplemento Boolean @default(false)
+  visivelOnline      Boolean @default(true)
 
-  // --- RELAÇÕES QUE FALTAVAM (CORREÇÃO AQUI) ---
+  criadoEm     DateTime @default(now()) // Adicionado de volta
+  atualizadoEm DateTime @updatedAt // Adicionado de volta
+
+  // Relações
   grupoId      Int?
-  grupo        Grupo?   @relation(fields: [grupoId], references: [id])
-
+  grupo        Grupo?        @relation(fields: [grupoId], references: [id])
   variacoes    Variacao[]
   complementos Complemento[]
   itensPedido  ItemPedido[]
@@ -68,7 +104,7 @@ model Produto {
 
 model Variacao {
   id        Int     @id @default(autoincrement())
-  nome      String  // Ex: "P", "M", "G"
+  nome      String
   preco     Decimal @db.Decimal(10, 2)
   produtoId Int
   produto   Produto @relation(fields: [produtoId], references: [id])
@@ -76,7 +112,7 @@ model Variacao {
 
 model Complemento {
   id        Int     @id @default(autoincrement())
-  nome      String  // Ex: "Bacon extra"
+  nome      String
   preco     Decimal @db.Decimal(10, 2)
   produtoId Int
   produto   Produto @relation(fields: [produtoId], references: [id])
@@ -96,10 +132,25 @@ model ItemPedido {
   id         Int     @id @default(autoincrement())
   quantidade Int
   precoUnit  Decimal @db.Decimal(10, 2)
-  
   pedidoId   Int
   pedido     Pedido  @relation(fields: [pedidoId], references: [id])
-  
   produtoId  Int
   produto    Produto @relation(fields: [produtoId], references: [id])
+}
+
+model GrupoVariacao {
+  id      Int    @id @default(autoincrement())
+  nome    String
+  grupoId Int
+  grupo   Grupo  @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+}
+
+model GrupoComplemento {
+  id          Int     @id @default(autoincrement())
+  nome        String
+  preco       Decimal @db.Decimal(10, 2)
+  maxQtd      Int     @default(1)
+  obrigatorio Boolean @default(false)
+  grupoId     Int
+  grupo       Grupo   @relation(fields: [grupoId], references: [id], onDelete: Cascade)
 }

@@ -333,7 +333,7 @@ const Sidebar = ({ open, setOpen }) => {
           {/* --- 2. BOTÃO SAIR (FIXADO NO RODAPÉ DO MENU) --- */}
           <div className="border-t border-gray-200 mt-2 pt-2">
             <Link
-              href="/login" // Link para sua tela de login
+              href="/auth/login" // Link para sua tela de login
               className={`group flex items-center py-3 px-3 rounded-lg transition-all duration-200 border border-transparent hover:bg-red-50 hover:border-red-100 ${open ? "gap-3 justify-start" : "justify-center"}`}
             >
               <span className="text-2xl text-gray-500 group-hover:text-red-600 transition-colors shrink-0">
