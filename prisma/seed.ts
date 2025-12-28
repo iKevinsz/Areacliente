@@ -3,76 +3,88 @@ import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
 async function main() {
-  console.log('🌱 Iniciando o seed...')
+  console.log('🌱 Iniciando o seed de Produtos...')
 
-  // 1. Limpa os dados antigos (opcional, cuidado em produção)
-  // await prisma.avaliacao.deleteMany()
+  // 1. Limpeza (opcional)
+  // await prisma.produto.deleteMany()
+  // await prisma.grupo.deleteMany()
   // await prisma.empresa.deleteMany()
 
-  // 2. Cria uma empresa
+  // 2. Cria a Empresa
   const empresa = await prisma.empresa.create({
     data: {
-      nome: "Luniére Burguer & Decorações",
+      nome: "Luniére Burguer",
       cnpj: "12.345.678/0001-99",
       email: "contato@luniere.com",
     }
   })
 
-  console.log(`🏢 Empresa criada: ${empresa.nome}`)
+  // 3. Cria um Grupo (Categorias do cardápio)
+  const grupoLanches = await prisma.grupo.create({
+    data: {
+      nome: "Lanches Artesanais",
+      empresaId: empresa.id
+    }
+  })
 
-  // 3. Cria várias avaliações para essa empresa
-  await prisma.avaliacao.createMany({
+  const grupoBebidas = await prisma.grupo.create({
+    data: {
+      nome: "Bebidas Geladas",
+      empresaId: empresa.id
+    }
+  })
+
+  // 4. Cria os Produtos
+  await prisma.produto.createMany({
     data: [
       {
-        clienteNome: "Fernanda Costa",
-        nota: 5,
-        comentario: "O lanche chegou super quentinho e a entrega foi muito rápida! O entregador foi super educado.",
-        tags: "Entrega Rápida,Sabor",
-        resposta: null, // Deixar null para testar o status "Pendente"
-        empresaId: empresa.id
+        nome: "X-Bacon Luniére",
+        descricao: "Pão brioche, burger 180g, muito bacon crocante e queijo cheddar.",
+        preco: 29.90,
+        categoria: "Lanches",
+        estoque: 50,
+        ativo: true,
+        imagem: "https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?auto=format&fit=crop&w=500&q=60",
+        grupoId: grupoLanches.id
       },
       {
-        clienteNome: "Kevin Rodrigo",
-        nota: 2,
-        comentario: "O hambúrguer estava frio e faltou o molho extra. Decepcionado.",
-        tags: "Temperatura,Pedido Incompleto",
-        resposta: null, // Pendente
-        empresaId: empresa.id
+        nome: "Smash Duplo",
+        descricao: "Dois burgers de 90g amassadinhos na chapa com queijo prato.",
+        preco: 24.50,
+        categoria: "Lanches",
+        estoque: 20,
+        ativo: true,
+        imagem: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=500&q=60",
+        grupoId: grupoLanches.id
       },
       {
-        clienteNome: "Juliana Paes",
-        nota: 4,
-        comentario: "Muito gostoso, mas achei a batata um pouco murcha. O lanche em si estava perfeito.",
-        tags: "Sabor",
-        resposta: "Olá Juliana! Vamos ajustar o tempo de fritura. Obrigado pelo feedback!", // Respondida
-        empresaId: empresa.id
+        nome: "Coca-Cola Lata",
+        descricao: "350ml bem gelada.",
+        preco: 6.00,
+        categoria: "Bebidas",
+        estoque: 100,
+        ativo: true,
+        imagem: null, // Sem imagem
+        grupoId: grupoBebidas.id
       },
       {
-        clienteNome: "Carlos Luniére",
-        nota: 5,
-        comentario: "Melhor açaí da região! Sem mais.",
-        tags: "Qualidade,Preço",
-        resposta: "Valeu Carlos! Volte sempre.", // Respondida
-        empresaId: empresa.id
-      },
-      {
-        clienteNome: "Ana Clara",
-        nota: 1,
-        comentario: "Nunca chegou.",
-        tags: "Entrega",
-        resposta: null,
-        empresaId: empresa.id
+        nome: "Suco de Laranja",
+        descricao: "Natural da fruta, 500ml.",
+        preco: 12.00,
+        categoria: "Bebidas",
+        estoque: 0, // Esgotado
+        ativo: false,
+        imagem: "https://images.unsplash.com/photo-1613478223719-2ab802602423?auto=format&fit=crop&w=500&q=60",
+        grupoId: grupoBebidas.id
       }
     ]
   })
 
-  console.log('✅ Seed finalizado com sucesso!')
+  console.log('✅ Produtos criados com sucesso!')
 }
 
 main()
-  .then(async () => {
-    await prisma.$disconnect()
-  })
+  .then(async () => await prisma.$disconnect())
   .catch(async (e) => {
     console.error(e)
     await prisma.$disconnect()

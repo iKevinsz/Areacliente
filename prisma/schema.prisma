@@ -10,95 +10,96 @@ datasource db {
 // --- NOVAS TABELAS ADICIONADAS ---
 
 model Empresa {
-  id            Int         @id @default(autoincrement())
-  nome          String
-  cnpj          String?
-  email         String?
-  grupos        Grupo[]
-  avaliacoes    Avaliacao[]
-  criadoEm      DateTime    @default(now())
+  id         Int         @id @default(autoincrement())
+  nome       String
+  cnpj       String?
+  email      String?
+  grupos     Grupo[]
+  avaliacoes Avaliacao[]
+  criadoEm   DateTime    @default(now())
 }
 
 model Grupo {
-  id          Int       @id @default(autoincrement())
-  nome        String
-  empresaId   Int
-  empresa     Empresa   @relation(fields: [empresaId], references: [id])
-  produtos    Produto[]
+  id        Int       @id @default(autoincrement())
+  nome      String
+  empresaId Int
+  empresa   Empresa   @relation(fields: [empresaId], references: [id])
+  produtos  Produto[]
 }
 
 model Avaliacao {
-  id          Int      @id @default(autoincrement())
-  nota        Int
-  comentario  String?
-  
+  id         Int      @id @default(autoincrement())
+  nota       Int
+  comentario String?
+
   // Campos novos para suportar sua tela
   clienteNome String   @default("Cliente Anônimo")
-  resposta    String?  // Se estiver vazio, é "pending". Se tiver texto, é "replied"
-  tags        String?  // Vamos salvar assim: "Sabor,Entrega Rápida" (separado por vírgula)
+  resposta    String?  // "pending" ou "replied"
+  tags        String?  // Ex: "Sabor,Entrega Rápida"
   criadoEm    DateTime @default(now())
-  
-  empresaId   Int
-  empresa     Empresa  @relation(fields: [empresaId], references: [id])
+
+  empresaId Int
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
 }
 
 // --- TABELAS EXISTENTES (ATUALIZADAS) ---
 
 model Produto {
-  id           Int           @id @default(autoincrement())
+  id           Int      @id @default(autoincrement())
   nome         String
-  descricao    String?       @db.Text
-  preco        Decimal       @db.Decimal(10, 2)
-  categoria    String?       // Pode manter ou usar a relação com Grupo
-  estoque      Int           @default(0)
-  imagem       String?
-  ativo        Boolean       @default(true)
+  descricao    String?  @db.Text
+  preco        Decimal  @db.Decimal(10, 2) // Recomendado definir precisão para dinheiro
+  categoria    String?
+  estoque      Int
+  imagem       String?  @db.LongText
+  ativo        Boolean
   
-  // Relacionamento com Grupo
-  grupoId      Int?
-  grupo        Grupo?        @relation(fields: [grupoId], references: [id])
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
 
-  // Relacionamentos novos
+  // --- RELAÇÕES QUE FALTAVAM (CORREÇÃO AQUI) ---
+  grupoId      Int?
+  grupo        Grupo?   @relation(fields: [grupoId], references: [id])
+
   variacoes    Variacao[]
   complementos Complemento[]
   itensPedido  ItemPedido[]
-  
-  criadoEm     DateTime      @default(now())
-  atualizadoEm DateTime      @updatedAt
 }
 
 model Variacao {
-  id        Int      @id @default(autoincrement())
-  nome      String   // Ex: "P", "M", "G"
-  preco     Decimal  @db.Decimal(10, 2)
+  id        Int     @id @default(autoincrement())
+  nome      String  // Ex: "P", "M", "G"
+  preco     Decimal @db.Decimal(10, 2)
   produtoId Int
-  produto   Produto  @relation(fields: [produtoId], references: [id])
+  produto   Produto @relation(fields: [produtoId], references: [id])
 }
 
 model Complemento {
-  id        Int      @id @default(autoincrement())
-  nome      String   // Ex: "Bacon extra"
-  preco     Decimal  @db.Decimal(10, 2)
+  id        Int     @id @default(autoincrement())
+  nome      String  // Ex: "Bacon extra"
+  preco     Decimal @db.Decimal(10, 2)
   produtoId Int
-  produto   Produto  @relation(fields: [produtoId], references: [id])
+  produto   Produto @relation(fields: [produtoId], references: [id])
 }
 
 model Pedido {
-  id          Int          @id @default(autoincrement())
-  cliente     String?
-  tipo        String
-  status      String       @default("Pendente")
-  total       Decimal      @db.Decimal(10, 2)
-  data        DateTime     @default(now())
-  itens       ItemPedido[]
+  id      Int          @id @default(autoincrement())
+  cliente String?
+  tipo    String
+  status  String       @default("Pendente")
+  total   Decimal      @db.Decimal(10, 2)
+  data    DateTime     @default(now())
+  itens   ItemPedido[]
 }
 
 model ItemPedido {
-  id          Int      @id @default(autoincrement())
-  quantidade  Int
-  precoUnit   Decimal  @db.Decimal(10, 2)
-  pedidoId    Int
-  pedido      Pedido   @relation(fields: [pedidoId], references: [id])
-  produtoId   Int
-  produto     Produto  @relation(fields: [produtoId], references: [id])
+  id         Int     @id @default(autoincrement())
+  quantidade Int
+  precoUnit  Decimal @db.Decimal(10, 2)
+  
+  pedidoId   Int
+  pedido     Pedido  @relation(fields: [pedidoId], references: [id])
+  
+  produtoId  Int
+  produto    Produto @relation(fields: [produtoId], references: [id])
 }
