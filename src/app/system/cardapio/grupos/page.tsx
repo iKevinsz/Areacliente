@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { 
   Search, Plus, Edit3, Trash2, X, Save, 
   CheckCircle2, XCircle, Layers, ListChecks, Settings2, PlusCircle,
-  GripVertical
+  GripVertical, AlertTriangle 
 } from 'lucide-react';
 
 // --- Interface de Tipos ---
@@ -46,10 +46,16 @@ export default function ProductGroupsPage() {
   const [groups, setGroups] = useState<ProductGroup[]>(initialGroups);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Estados do Modal
+  // Estados do Modal Principal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'geral' | 'variacoes' | 'complementos'>('geral');
   const [editingId, setEditingId] = useState<number | null>(null);
+
+  // Estado do Modal de Confirmação de Exclusão
+  const [deleteTarget, setDeleteTarget] = useState<{ type: 'variation' | 'complement' | 'group', id: number } | null>(null);
+
+  // Estado Modal de Sucesso
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // Estado do Formulário
   const [formData, setFormData] = useState({
@@ -102,7 +108,17 @@ export default function ProductGroupsPage() {
       const newId = Math.floor(Math.random() * 10000);
       setGroups([...groups, { id: newId, ...groupData }].sort((a,b) => a.sequence - b.sequence));
     }
+    
+    // Fecha o modal de edição
     setIsModalOpen(false);
+
+    // Abre o modal de sucesso padronizado
+    setShowSuccessModal(true);
+
+    // Fecha automaticamente após 3 segundos
+    setTimeout(() => {
+      setShowSuccessModal(false);
+    }, 3000);
   };
 
   const addVariation = () => {
@@ -125,6 +141,30 @@ export default function ProductGroupsPage() {
     setTempComplement({ name: '', price: '', max: 1, required: false });
   };
 
+  // --- Funções de Exclusão ---
+  const requestDelete = (type: 'variation' | 'complement' | 'group', id: number) => {
+    setDeleteTarget({ type, id });
+  };
+
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
+
+    if (deleteTarget.type === 'group') {
+      setGroups(groups.filter(g => g.id !== deleteTarget.id));
+    } else if (deleteTarget.type === 'variation') {
+      setFormData({
+        ...formData,
+        variations: formData.variations.filter(v => v.id !== deleteTarget.id)
+      });
+    } else {
+      setFormData({
+        ...formData,
+        complements: formData.complements.filter(c => c.id !== deleteTarget.id)
+      });
+    }
+    setDeleteTarget(null);
+  };
+
   return (
     <div className="p-4 md:p-8 bg-gray-50 min-h-full font-sans text-gray-800">
       
@@ -135,7 +175,10 @@ export default function ProductGroupsPage() {
             <h1 className="text-2xl font-bold text-gray-900">Grupos de Produtos</h1>
             <p className="text-gray-500 text-sm">Gerencie a organização e regras dos grupos de produtos.</p>
           </div>
-          <button onClick={() => handleOpenModal()} className="w-full md:w-auto flex items-center justify-center gap-2 bg-blue-600 text-white px-6 py-2.5 rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm">
+          <button 
+            onClick={() => handleOpenModal()} 
+            className="w-full md:w-auto flex items-center justify-center gap-2 bg-blue-600 text-white px-6 py-2.5 rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm cursor-pointer"
+          >
             <Plus size={20} /> Novo Grupo
           </button>
         </div>
@@ -198,11 +241,16 @@ export default function ProductGroupsPage() {
                     <div className="flex justify-end gap-2">
                       <button 
                         onClick={() => handleOpenModal(group)}
-                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all cursor-pointer"
+                        title="Editar"
                       >
                         <Edit3 size={18} />
                       </button>
-                      <button className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all">
+                      <button 
+                        onClick={() => requestDelete('group', group.id)}
+                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
+                        title="Excluir"
+                      >
                         <Trash2 size={18} />
                       </button>
                     </div>
@@ -217,24 +265,33 @@ export default function ProductGroupsPage() {
         )}
       </div>
 
-      {/* --- MODAL (Atualizado sem Imagem) --- */}
+      {/* --- MODAL PRINCIPAL (Formulário) --- */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             
             <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
               <h2 className="text-lg font-bold text-gray-800">{editingId ? 'Editar Grupo' : 'Novo Grupo'}</h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
+              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 cursor-pointer"><X size={24} /></button>
             </div>
 
             <div className="flex border-b border-gray-100 px-6 gap-6 bg-white overflow-x-auto scrollbar-hide">
-                <button onClick={() => setActiveTab('geral')} className={`py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${activeTab === 'geral' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
+                <button 
+                    onClick={() => setActiveTab('geral')} 
+                    className={`py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap cursor-pointer ${activeTab === 'geral' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                >
                     <Settings2 size={16}/> Geral
                 </button>
-                <button onClick={() => setActiveTab('variacoes')} className={`py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${activeTab === 'variacoes' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
+                <button 
+                    onClick={() => setActiveTab('variacoes')} 
+                    className={`py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap cursor-pointer ${activeTab === 'variacoes' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                >
                     <Layers size={16}/> Variações <span className="bg-gray-100 text-gray-600 text-[10px] px-1.5 rounded-full">{formData.variations.length}</span>
                 </button>
-                <button onClick={() => setActiveTab('complementos')} className={`py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${activeTab === 'complementos' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
+                <button 
+                    onClick={() => setActiveTab('complementos')} 
+                    className={`py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap cursor-pointer ${activeTab === 'complementos' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                >
                     <ListChecks size={16}/> Complementos <span className="bg-gray-100 text-gray-600 text-[10px] px-1.5 rounded-full">{formData.complements.length}</span>
                 </button>
             </div>
@@ -276,13 +333,13 @@ export default function ProductGroupsPage() {
                           onChange={(e) => setTempVariation(e.target.value)} 
                           onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addVariation())} 
                         />
-                        <button type="button" onClick={addVariation} className="bg-blue-600 text-white px-4 rounded-lg hover:bg-blue-700 transition-colors"><Plus size={20}/></button>
+                        <button type="button" onClick={addVariation} className="bg-blue-600 text-white px-4 rounded-lg hover:bg-blue-700 transition-colors cursor-pointer"><Plus size={20}/></button>
                     </div>
                     <div className="space-y-2 mt-4">
                         {formData.variations.map(vari => (
                             <div key={vari.id} className="flex justify-between items-center bg-gray-50 border border-gray-200 px-4 py-2 rounded-lg">
                                 <span className="text-sm font-bold text-gray-700">{vari.name}</span>
-                                <button type="button" onClick={() => setFormData({...formData, variations: formData.variations.filter(v => v.id !== vari.id)})} className="text-gray-400 hover:text-red-500"><Trash2 size={16}/></button>
+                                <button type="button" onClick={() => requestDelete('variation', vari.id)} className="text-gray-400 hover:text-red-500 cursor-pointer"><Trash2 size={16}/></button>
                             </div>
                         ))}
                     </div>
@@ -305,7 +362,7 @@ export default function ProductGroupsPage() {
                              <input type="number" className="w-full px-3 py-2 border rounded-lg text-sm text-center" value={tempComplement.max} onChange={e => setTempComplement({...tempComplement, max: parseInt(e.target.value)})} />
                         </div>
                         <div className="col-span-2">
-                             <button type="button" onClick={addComplement} className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex justify-center"><PlusCircle size={20}/></button>
+                             <button type="button" onClick={addComplement} className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex justify-center cursor-pointer"><PlusCircle size={20}/></button>
                         </div>
                     </div>
 
@@ -319,7 +376,7 @@ export default function ProductGroupsPage() {
                                     </div>
                                     <p className="text-[10px] text-gray-400">Máx: {comp.maxQuantity} • {comp.required ? 'Obrigatório' : 'Opcional'}</p>
                                 </div>
-                                <button type="button" onClick={() => setFormData({...formData, complements: formData.complements.filter(c => c.id !== comp.id)})} className="text-gray-300 hover:text-red-500"><Trash2 size={16}/></button>
+                                <button type="button" onClick={() => requestDelete('complement', comp.id)} className="text-gray-300 hover:text-red-500 cursor-pointer"><Trash2 size={16}/></button>
                             </div>
                         ))}
                     </div>
@@ -327,12 +384,77 @@ export default function ProductGroupsPage() {
               )}
 
               <div className="pt-6 flex justify-end gap-3 border-t border-gray-100 mt-6">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 text-gray-500 font-bold text-sm">Cancelar</button>
-                <button type="submit" className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm flex items-center gap-2 transition-all">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 text-gray-500 font-bold text-sm cursor-pointer">Cancelar</button>
+                <button type="submit" className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm flex items-center gap-2 transition-all cursor-pointer">
                   <Save size={18} /> Salvar Alterações
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL DE CONFIRMAÇÃO DE EXCLUSÃO --- */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-[20000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95">
+            <div className="p-6 flex flex-col items-center text-center">
+              <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                <AlertTriangle size={32} className="text-red-600" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-2">Excluir Item?</h3>
+              <p className="text-sm text-gray-500 mb-6">
+                Você tem certeza que deseja remover {deleteTarget.type === 'group' ? 'este grupo' : deleteTarget.type === 'variation' ? 'esta variação' : 'este complemento'}? Esta ação não pode ser desfeita.
+              </p>
+              <div className="flex gap-3 w-full">
+                <button 
+                  onClick={() => setDeleteTarget(null)}
+                  className="flex-1 py-2.5 border border-gray-300 rounded-lg font-bold text-gray-700 hover:bg-gray-50 text-sm transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={confirmDelete}
+                  className="flex-1 py-2.5 bg-red-600 rounded-lg font-bold text-white hover:bg-red-700 text-sm transition-colors cursor-pointer"
+                >
+                  Sim, Excluir
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL DE SUCESSO PADRONIZADO --- */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-[30000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 relative animate-in zoom-in-95 duration-300 flex flex-col items-center">
+            
+            {/* Botão Fechar */}
+            <button 
+              onClick={() => setShowSuccessModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+            >
+              <X size={20} />
+            </button>
+
+            {/* Ícone de Sucesso */}
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+              <CheckCircle2 className="text-green-600 w-8 h-8" />
+            </div>
+            
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Sucesso!</h3>
+            <p className="text-sm text-gray-500 mb-6 text-center max-w-xs">
+              O grupo foi salvo com sucesso.
+            </p>
+
+            {/* Botão Entendido */}
+            <button 
+              onClick={() => setShowSuccessModal(false)}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-blue-100 active:scale-95 cursor-pointer"
+            >
+              Entendido
+            </button>
           </div>
         </div>
       )}

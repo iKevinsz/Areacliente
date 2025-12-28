@@ -34,8 +34,9 @@ export default function ContasPagarPage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  // Modal
+  // Modais
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false); // Novo Estado
   const [editingId, setEditingId] = useState<string | null>(null);
   
   const [formData, setFormData] = useState<Partial<Conta>>({
@@ -84,11 +85,14 @@ export default function ContasPagarPage() {
       };
       setContas([novaConta, ...contas]);
     }
+    
+    // Fecha o formulário e abre o sucesso
     setIsModalOpen(false);
+    setShowSuccessModal(true);
   };
 
   const deleteConta = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // Impede que o clique na lixeira abra o modal de edição
+    e.stopPropagation(); 
     if(confirm("Deseja excluir esta conta?")) {
       setContas(contas.filter(c => c.id !== id));
     }
@@ -117,7 +121,7 @@ export default function ContasPagarPage() {
           <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">Contas a Pagar</h1>
           <p className="text-gray-500 text-sm">Gerencie suas despesas e vencimentos.</p>
         </div>
-        <button onClick={() => handleOpenModal()} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition-all text-sm font-medium">
+        <button onClick={() => handleOpenModal()} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition-all text-sm font-medium cursor-pointer">
           <Plus size={18} /> Nova Conta
         </button>
       </div>
@@ -138,16 +142,16 @@ export default function ContasPagarPage() {
           </div>
           <div className="flex bg-gray-100 p-1 rounded-lg self-start">
             {['todos', 'pendente', 'vencido', 'pago'].map((status) => (
-              <button key={status} onClick={() => setFilterStatus(status as any)} className={`px-3 py-1.5 rounded-md text-xs font-medium capitalize transition-all ${filterStatus === status ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>{status}</button>
+              <button key={status} onClick={() => setFilterStatus(status as any)} className={`px-3 py-1.5 rounded-md text-xs font-medium capitalize transition-all cursor-pointer ${filterStatus === status ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>{status}</button>
             ))}
           </div>
         </div>
         <div className="flex items-center gap-2 w-full xl:w-auto bg-gray-50 p-2 rounded-lg border border-gray-100">
             <span className="text-xs font-semibold text-gray-500 uppercase flex items-center gap-1"><Calendar size={14}/> Período:</span>
-            <input type="date" className="bg-white border border-gray-200 text-gray-600 text-xs rounded px-2 py-1.5 outline-none" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            <input type="date" className="bg-white border border-gray-200 text-gray-600 text-xs rounded px-2 py-1.5 outline-none cursor-pointer" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
             <span className="text-gray-400 text-xs">até</span>
-            <input type="date" className="bg-white border border-gray-200 text-gray-600 text-xs rounded px-2 py-1.5 outline-none" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-            {(startDate || endDate) && <button onClick={() => {setStartDate(''); setEndDate('')}} className="text-xs text-red-500 hover:text-red-700 underline ml-1">Limpar</button>}
+            <input type="date" className="bg-white border border-gray-200 text-gray-600 text-xs rounded px-2 py-1.5 outline-none cursor-pointer" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            {(startDate || endDate) && <button onClick={() => {setStartDate(''); setEndDate('')}} className="text-xs text-red-500 hover:text-red-700 underline ml-1 cursor-pointer">Limpar</button>}
         </div>
       </div>
 
@@ -187,8 +191,8 @@ export default function ContasPagarPage() {
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={(e) => { e.stopPropagation(); handleOpenModal(conta); }} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Editar"><Edit3 size={16} /></button>
-                      <button onClick={(e) => deleteConta(conta.id, e)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Excluir"><Trash2 size={16} /></button>
+                      <button onClick={(e) => { e.stopPropagation(); handleOpenModal(conta); }} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer" title="Editar"><Edit3 size={16} /></button>
+                      <button onClick={(e) => deleteConta(conta.id, e)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer" title="Excluir"><Trash2 size={16} /></button>
                     </div>
                   </td>
                 </tr>
@@ -210,7 +214,7 @@ export default function ContasPagarPage() {
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
             <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
               <h2 className="text-lg font-bold text-gray-800">{editingId ? 'Detalhes da Conta' : 'Nova Conta a Pagar'}</h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-200 rounded-full"><X size={20} /></button>
+              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-200 rounded-full cursor-pointer"><X size={20} /></button>
             </div>
             
             <form onSubmit={handleSaveConta} className="p-6 space-y-4">
@@ -228,7 +232,7 @@ export default function ContasPagarPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Vencimento *</label>
-                  <input type="date" className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
+                  <input type="date" className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer" 
                     value={formData.vencimento} onChange={e => setFormData({...formData, vencimento: e.target.value})} />
                 </div>
               </div>
@@ -242,7 +246,7 @@ export default function ContasPagarPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Categoria</label>
-                  <select className="w-full px-3 py-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+                  <select className="w-full px-3 py-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer"
                     value={formData.categoria} onChange={e => setFormData({...formData, categoria: e.target.value})} >
                     <option value="">Selecione...</option>
                     <option value="Infraestrutura">Infraestrutura</option>
@@ -253,7 +257,7 @@ export default function ContasPagarPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Situação (Status)</label>
-                  <select className="w-full px-3 py-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+                  <select className="w-full px-3 py-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer"
                     value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as any})} >
                     <option value="pendente">Pendente</option>
                     <option value="pago">Pago</option>
@@ -263,12 +267,46 @@ export default function ContasPagarPage() {
               </div>
 
               <div className="pt-4 flex gap-3">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50">Cancelar</button>
-                <button type="submit" className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 font-medium flex items-center justify-center gap-2">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 cursor-pointer">Cancelar</button>
+                <button type="submit" className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 font-medium flex items-center justify-center gap-2 cursor-pointer">
                   <Save size={16} /> Salvar Alterações
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL DE SUCESSO --- */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-[60000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 relative animate-in zoom-in-95 duration-300 flex flex-col items-center">
+            
+            {/* Botão Fechar */}
+            <button 
+              onClick={() => setShowSuccessModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+            >
+              <X size={20} />
+            </button>
+
+            {/* Ícone de Sucesso */}
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+              <CheckCircle2 className="text-green-600 w-8 h-8" />
+            </div>
+            
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Sucesso!</h3>
+            <p className="text-sm text-gray-500 mb-6 text-center">
+              A conta foi salva corretamente no sistema.
+            </p>
+
+            {/* Botão Entendido */}
+            <button 
+              onClick={() => setShowSuccessModal(false)}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-blue-100 active:scale-95 cursor-pointer"
+            >
+              Entendido
+            </button>
           </div>
         </div>
       )}

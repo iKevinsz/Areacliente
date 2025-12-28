@@ -110,7 +110,7 @@ export default function LicencasPage() {
                 </div>
               </div>
               <button 
-                onClick={() => router.push("/sistema/cartao")}
+                onClick={() => router.push("/system/sistema/cartao")}
                 className="text-sm font-bold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 cursor-pointer transition-all active:scale-95 whitespace-nowrap"
               >
                 <CreditCard size={16} /> Cadastrar cartão

@@ -4,95 +4,101 @@ generator client {
 
 datasource db {
   provider = "mysql"
+  url      = env("DATABASE_URL")
 }
 
-model Empresa {
-  id                  Int          @id @default(autoincrement())
-  cnpj_cpf            String       @db.VarChar(20)
-  razao_social        String       @db.VarChar(255)
-  nome_fantasia       String       @db.VarChar(255)
-  inscricao_estadual  String?      @db.VarChar(50)
-  inscricao_municipal String?      @db.VarChar(50)
-  segmento            String?      @db.VarChar(100)
-  cep                 String?      @db.VarChar(10)
-  endereco            String?      @db.VarChar(255)
-  numero              String?      @db.VarChar(20)
-  bairro              String?      @db.VarChar(100)
-  complemento         String?      @db.VarChar(100)
-  uf                  String?      @db.Char(2)
-  cidade              String?      @db.VarChar(100)
-  telefone            String?      @db.VarChar(20)
-  celular             String?      @db.VarChar(20)
-  email               String?      @db.VarChar(255)
-  site                String?      @db.VarChar(255)
-  // Ajustado para LongText para suportar a string da imagem
-  logo_path           String?      @db.LongText
-  fuso_horario        String       @default("Sao_Paulo") @db.VarChar(100)
-  tempo_retirada      Int          @default(0)
-  tempo_entrega       Int          @default(0)
-  link_loja           String?      @unique @db.VarChar(100)
-  whatsapp            String?      @db.VarChar(20)
-  instagram           String?      @db.VarChar(255)
-  facebook            String?      @db.VarChar(255)
-  youtube             String?      @db.VarChar(255)
-  twitter             String?      @db.VarChar(255)
-  created_at          DateTime     @default(now())
-  grupos              Grupo[]
-  avaliacoes          Avaliacao[]
+// --- NOVAS TABELAS ADICIONADAS ---
 
-  @@map("empresas")
+model Empresa {
+  id            Int         @id @default(autoincrement())
+  nome          String
+  cnpj          String?
+  email         String?
+  grupos        Grupo[]
+  avaliacoes    Avaliacao[]
+  criadoEm      DateTime    @default(now())
 }
 
 model Grupo {
-  id           Int           @id @default(autoincrement())
-  empresa_id   Int?
-  sequencia    Int
-  descricao    String        @db.VarChar(100)
-  ativo        Boolean       @default(true)
-  empresa      Empresa?      @relation(fields: [empresa_id], references: [id], onDelete: Cascade)
-  variacoes    Variacao[]
-  complementos Complemento[]
-
-  @@map("grupos")
-}
-
-model Variacao {
-  id       Int    @id @default(autoincrement())
-  grupo_id Int?
-  nome     String @db.VarChar(100)
-  grupo    Grupo? @relation(fields: [grupo_id], references: [id], onDelete: Cascade)
-
-  @@map("variacoes")
-}
-
-model Complemento {
-  id          Int      @id @default(autoincrement())
-  grupo_id    Int?
-  nome        String   @db.VarChar(100)
-  preco       Decimal  @default(0.00) @db.Decimal(10, 2)
-  qtd_max     Int      @default(1)
-  obrigatorio Boolean  @default(false)
-  grupo       Grupo?   @relation(fields: [grupo_id], references: [id], onDelete: Cascade)
-
-  @@map("complementos")
+  id          Int       @id @default(autoincrement())
+  nome        String
+  empresaId   Int
+  empresa     Empresa   @relation(fields: [empresaId], references: [id])
+  produtos    Produto[]
 }
 
 model Avaliacao {
-  id             Int             @id @default(autoincrement())
-  empresa_id     Int?
-  cliente_nome   String          @db.VarChar(100)
-  nota           Int
-  comentario     String?         @db.Text
-  tags           String?         @db.VarChar(255)
-  status         AvaliacaoStatus @default(pending)
-  resposta_admin String?         @db.Text
-  data_avaliacao DateTime        @default(now())
-  empresa        Empresa?        @relation(fields: [empresa_id], references: [id], onDelete: Cascade)
-
-  @@map("avaliacoes")
+  id          Int      @id @default(autoincrement())
+  nota        Int
+  comentario  String?
+  
+  // Campos novos para suportar sua tela
+  clienteNome String   @default("Cliente Anônimo")
+  resposta    String?  // Se estiver vazio, é "pending". Se tiver texto, é "replied"
+  tags        String?  // Vamos salvar assim: "Sabor,Entrega Rápida" (separado por vírgula)
+  criadoEm    DateTime @default(now())
+  
+  empresaId   Int
+  empresa     Empresa  @relation(fields: [empresaId], references: [id])
 }
 
-enum AvaliacaoStatus {
-  pending
-  replied
+// --- TABELAS EXISTENTES (ATUALIZADAS) ---
+
+model Produto {
+  id           Int           @id @default(autoincrement())
+  nome         String
+  descricao    String?       @db.Text
+  preco        Decimal       @db.Decimal(10, 2)
+  categoria    String?       // Pode manter ou usar a relação com Grupo
+  estoque      Int           @default(0)
+  imagem       String?
+  ativo        Boolean       @default(true)
+  
+  // Relacionamento com Grupo
+  grupoId      Int?
+  grupo        Grupo?        @relation(fields: [grupoId], references: [id])
+
+  // Relacionamentos novos
+  variacoes    Variacao[]
+  complementos Complemento[]
+  itensPedido  ItemPedido[]
+  
+  criadoEm     DateTime      @default(now())
+  atualizadoEm DateTime      @updatedAt
+}
+
+model Variacao {
+  id        Int      @id @default(autoincrement())
+  nome      String   // Ex: "P", "M", "G"
+  preco     Decimal  @db.Decimal(10, 2)
+  produtoId Int
+  produto   Produto  @relation(fields: [produtoId], references: [id])
+}
+
+model Complemento {
+  id        Int      @id @default(autoincrement())
+  nome      String   // Ex: "Bacon extra"
+  preco     Decimal  @db.Decimal(10, 2)
+  produtoId Int
+  produto   Produto  @relation(fields: [produtoId], references: [id])
+}
+
+model Pedido {
+  id          Int          @id @default(autoincrement())
+  cliente     String?
+  tipo        String
+  status      String       @default("Pendente")
+  total       Decimal      @db.Decimal(10, 2)
+  data        DateTime     @default(now())
+  itens       ItemPedido[]
+}
+
+model ItemPedido {
+  id          Int      @id @default(autoincrement())
+  quantidade  Int
+  precoUnit   Decimal  @db.Decimal(10, 2)
+  pedidoId    Int
+  pedido      Pedido   @relation(fields: [pedidoId], references: [id])
+  produtoId   Int
+  produto     Produto  @relation(fields: [produtoId], references: [id])
 }

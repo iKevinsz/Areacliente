@@ -122,6 +122,12 @@ export const normalizeCelular = (value: string | undefined) => {
     .substring(0, 15); 
 };
 
+// Nova máscara para IE e IM (Permite apenas números)
+export const normalizeNumbersOnly = (value: string | undefined) => {
+  if (!value) return "";
+  return value.replace(/\D/g, ""); // Remove tudo que não é dígito
+};
+
 // --- Componentes UI Reutilizáveis ---
 
 const Label = ({ icon: Icon, children, htmlFor }: { icon?: React.ElementType, children: React.ReactNode; htmlFor?: string }) => (
@@ -131,7 +137,8 @@ const Label = ({ icon: Icon, children, htmlFor }: { icon?: React.ElementType, ch
   </label>
 );
 
-type MaskType = "cep" | "cpf" | "cnpj" | "documento" | "phone" | "celular";
+// Adicionado 'ie' e 'im' ao tipo
+type MaskType = "cep" | "cpf" | "cnpj" | "documento" | "phone" | "celular" | "ie" | "im";
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   name: string;
@@ -151,6 +158,10 @@ const Input = ({ name, mask, className, ...props }: InputProps) => {
     if (mask === 'documento') value = normalizeDocumento(value);
     if (mask === 'phone') value = normalizePhone(value);
     if (mask === 'celular') value = normalizeCelular(value);
+    
+    // Aplica a máscara numérica para IE e IM
+    if (mask === 'ie' || mask === 'im') value = normalizeNumbersOnly(value);
+
     e.target.value = value;
     formOnChange(e);
   };
@@ -284,11 +295,13 @@ export default function EmpresaSettingsPage() {
               </div>
               <div className="md:col-span-4">
                 <Label>Inscrição Estadual</Label>
-                <Input name="ie" />
+                {/* Aplicando a máscara 'ie' (somente números) */}
+                <Input name="ie" mask="ie" placeholder="Somente números" />
               </div>
               <div className="md:col-span-4">
                 <Label>Inscrição Municipal</Label>
-                <Input name="im" />
+                {/* Aplicando a máscara 'im' (somente números) */}
+                <Input name="im" mask="im" placeholder="Somente números" />
               </div>
 
               <div className="md:col-span-8">

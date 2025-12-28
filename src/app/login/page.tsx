@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link"; // Importação do componente Link
 import { 
   Mail, Lock, ArrowRight, Loader2, 
   Eye, EyeOff, CheckCircle2 
@@ -38,24 +39,17 @@ export default function LoginPage() {
            <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-orange-500 rounded-full blur-[120px] animate-pulse"></div>
         </div>
 
-        {/* Aumentei o espaçamento vertical aqui de space-y-6 para space-y-10 */}
         <div className="relative z-10 flex flex-col items-center text-center space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-1000">
           
-          {/* LOGO MAIOR, SEM FUNDO AZUL CLARO, E COM BORDA ADICIONADA */}
-          {/* Adicionei um container relativo para aplicar a borda e o brilho */}
           <div className="relative group">
-            {/* Efeito de brilho/borda atrás da imagem */}
             <div className="absolute -inset-2 bg-gradient-to-r from-blue-500 to-orange-500 rounded-3xl blur-xl opacity-30 group-hover:opacity-50 transition-opacity duration-500"></div>
             
             <img 
               src="/datacaixa-facebook-2.jpg" 
               alt="Logo Datacaixa" 
-              // Aumentei de h-20 para h-48 e adicionei as classes de animação de hover diretamente na imagem
-              // Adicionei classes de borda: border-4 border-white/20 rounded-3xl
-              className="relative h-100 w-auto object-contain drop-shadow-xl transform group-hover:scale-105 transition-transform duration-500 border-4 border-white/20 rounded-3xl bg-white/5 backdrop-blur-sm p-2"
+              className="relative h-100 w-auto object-contain drop-shadow-xl transform group-hover:scale-105 transition-transform duration-500 border-white/20 rounded-3xl bg-white/5 backdrop-blur-sm p-2"
               onError={(e) => {
                 e.currentTarget.style.display = 'none';
-                // Ajustei o tamanho do fallback também para ficar proporcional
                 e.currentTarget.parentElement!.innerHTML = `
                   <div class="flex flex-col items-center">
                     <div class="w-32 h-32 bg-white/10 rounded-xl flex items-center justify-center mb-4 backdrop-blur-sm border border-white/20">
@@ -77,7 +71,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* LADO DIREITO: FORMULÁRIO (Sem alterações) */}
+      {/* LADO DIREITO: FORMULÁRIO */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 lg:p-24 bg-gray-50/50">
         <div className="w-full max-w-md space-y-8 animate-in fade-in slide-in-from-right-8 duration-700">
           
@@ -110,7 +104,15 @@ export default function LoginPage() {
             <div className={`group relative transition-all duration-300 ${focusedField === 'password' ? 'scale-[1.02]' : ''}`}>
               <div className="flex justify-between items-center mb-1 ml-1">
                 <label className="text-xs font-bold text-gray-500 uppercase">Senha</label>
-                <a href="#" className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer">Esqueceu a senha?</a>
+                
+                {/* --- AQUI ESTÁ O LINK PARA A TELA DE ESQUECEU SENHA --- */}
+                <Link 
+                  href="/auth/forgot-password" 
+                  className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                >
+                  Esqueceu a senha?
+                </Link>
+
               </div>
               <div className={`flex items-center border-2 rounded-xl px-4 py-3 bg-white transition-colors ${focusedField === 'password' ? 'border-blue-500 shadow-lg shadow-blue-100' : 'border-gray-200'}`}>
                 <Lock className={`w-5 h-5 transition-colors ${focusedField === 'password' ? 'text-blue-500' : 'text-gray-400'}`} />
