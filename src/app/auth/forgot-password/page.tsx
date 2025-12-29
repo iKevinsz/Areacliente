@@ -126,7 +126,7 @@ export default function ForgotPasswordPage() {
           {/* --- RODAPÉ / VOLTAR --- */}
           <div className="mt-8 text-center">
             <Link 
-              href="/login" 
+              href="/auth/login" 
               className="inline-flex items-center gap-2 text-sm font-bold text-gray-400 hover:text-gray-600 transition-colors cursor-pointer group"
             >
               <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
