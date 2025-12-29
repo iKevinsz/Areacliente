@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 export default function EmpresaPage() {
   return (
     <div className="p-6">
@@ -207,3 +208,14 @@ export default function EmpresaPage() {
     
   );
 }
+=======
+export default function HomePage() {
+  return (
+  <div>
+    <h1>Home Page</h1>
+    <p>This is the home page content.</p>
+  </div>
+
+  )
+}
+>>>>>>> 41fc8df85f1e632cbee79edbcc9aa6d26ceb263f
