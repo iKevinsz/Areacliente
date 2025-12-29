@@ -5,9 +5,7 @@ import {
   Plus, ThumbsUp, Search, MessageSquare, 
   Clock, CheckCircle2, X, Send, Check 
 } from "lucide-react";
-
-// Removido as imports de actions para não depender do banco
-// import { criarSugestao, toggleLikeAction } from "@/app/actions/sugestoes"; 
+import { criarSugestao, toggleLikeAction } from "@/app/actions/sugestoes"; 
 
 interface Sugestao {
   id: number;
@@ -19,7 +17,7 @@ interface Sugestao {
   status: "pendente" | "andamento" | "finalizada";
 }
 
-export default function SugestoesClient() {
+export default function SugestoesClient({ dadosIniciais }: { dadosIniciais: Sugestao[] }) {
   const [activeTab, setActiveTab] = useState<string>("pendente");
   const [filtroSistema, setFiltroSistema] = useState("Todos");
   const [buscaTexto, setBuscaTexto] = useState("");
@@ -28,27 +26,26 @@ export default function SugestoesClient() {
   const [isModalCadastroOpen, setIsModalCadastroOpen] = useState(false);
   const [isModalSucessoOpen, setIsModalSucessoOpen] = useState(false);
   
-  // Persistência local de votos e sugestões
+  // Persistência local de votos
   const [votosRealizados, setVotosRealizados] = useState<number[]>([]);
-  const [listaSugestoes, setListaSugestoes] = useState<Sugestao[]>([]);
 
-  // Carrega dados do LocalStorage ao iniciar
+  // Atualiza a lista sempre que o banco mudar (via props do server component)
+  const [listaSugestoes, setListaSugestoes] = useState<Sugestao[]>(dadosIniciais);
+  
   useEffect(() => {
-    const sugestoesSalvas = localStorage.getItem("minhas_sugestoes_locais");
+    setListaSugestoes(dadosIniciais);
+  }, [dadosIniciais]);
+
+  useEffect(() => {
     const votosSalvos = localStorage.getItem("meus_votos_sugestoes");
-    
-    if (sugestoesSalvas) setListaSugestoes(JSON.parse(sugestoesSalvas));
-    if (votosSalvos) setVotosRealizados(JSON.parse(votosSalvos));
+    if (votosSalvos) {
+      setVotosRealizados(JSON.parse(votosSalvos));
+    }
   }, []);
 
-  // Salva no LocalStorage sempre que a lista mudar
-  useEffect(() => {
-    localStorage.setItem("minhas_sugestoes_locais", JSON.stringify(listaSugestoes));
-  }, [listaSugestoes]);
-
-  // Filtros protegidos contra undefined
+  // Filtros
   const sugestoesFiltradas = useMemo(() => {
-    return (listaSugestoes || []).filter((s) => {
+    return listaSugestoes.filter((s) => {
       const bateStatus = s.status === activeTab;
       const bateSistema = filtroSistema === "Todos" || s.sistema === filtroSistema;
       const bateTexto = s.descricao.toLowerCase().includes(buscaTexto.toLowerCase());
@@ -56,42 +53,46 @@ export default function SugestoesClient() {
     });
   }, [activeTab, filtroSistema, buscaTexto, listaSugestoes]);
 
-  // --- LÓGICA DE LIKE LOCAL ---
-  const handleLike = (id: number) => {
+  // --- LÓGICA DE LIKE COM BANCO DE DADOS ---
+  const handleLike = async (id: number) => {
     const jaVotou = votosRealizados.includes(id);
     let novosVotos: number[];
+    let incrementar = false;
 
+    // 1. Atualização Otimista (Visual instantâneo)
     if (jaVotou) {
+      // Remover voto
       setListaSugestoes(prev => prev.map(s => s.id === id ? { ...s, curtidas: s.curtidas - 1 } : s));
       novosVotos = votosRealizados.filter(votoId => votoId !== id);
+      incrementar = false;
     } else {
+      // Adicionar voto
       setListaSugestoes(prev => prev.map(s => s.id === id ? { ...s, curtidas: s.curtidas + 1 } : s));
       novosVotos = [...votosRealizados, id];
+      incrementar = true;
     }
 
     setVotosRealizados(novosVotos);
     localStorage.setItem("meus_votos_sugestoes", JSON.stringify(novosVotos));
+
+    // 2. Atualização no Banco (Server Action)
+    await toggleLikeAction(id, incrementar);
   };
 
-  // --- CADASTRO LOCAL ---
-  const handleCadastrarLocal = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    
-    const novaSugestao: Sugestao = {
-      id: Date.now(), // ID único baseado no tempo
-      data: new Date().toLocaleDateString('pt-BR'),
-      descricao: formData.get("descricao") as string,
-      sistema: formData.get("sistema") as string,
-      classificacao: formData.get("classificacao") as string,
-      curtidas: 0,
-      status: "pendente"
-    };
+  // --- CADASTRO COM BANCO DE DADOS ---
+  const handleCadastrar = async (formData: FormData) => {
+    // A chamada é feita via atributo 'action' do form ou manualmente aqui
+    // Vamos usar a action importada
+    const resultado = await criarSugestao(formData);
 
-    setListaSugestoes(prev => [novaSugestao, ...prev]);
-    setIsModalCadastroOpen(false);
-    setIsModalSucessoOpen(true);
-    setTimeout(() => setIsModalSucessoOpen(false), 3000);
+    if (resultado.success) {
+      setIsModalCadastroOpen(false);
+      setIsModalSucessoOpen(true);
+      setTimeout(() => setIsModalSucessoOpen(false), 3000);
+      // O revalidatePath no servidor vai atualizar os dadosIniciais automaticamente
+    } else {
+      alert("Erro ao salvar sugestão.");
+    }
   };
 
   return (
@@ -182,6 +183,7 @@ export default function SugestoesClient() {
                                     ? "bg-blue-100 text-blue-700 hover:bg-red-50 hover:text-red-600 cursor-pointer ring-1 ring-blue-200"
                                     : "text-blue-600 hover:bg-blue-50 cursor-pointer active:scale-95 border border-blue-100"
                             }`}
+                            title={votosRealizados.includes(s.id) ? "Remover voto" : "Votar nesta sugestão"}
                         >
                             {votosRealizados.includes(s.id) ? <Check size={14} /> : <ThumbsUp size={14} />}
                             {s.curtidas}
@@ -192,7 +194,7 @@ export default function SugestoesClient() {
                 ) : (
                     <tr>
                     <td colSpan={5} className="px-6 py-12 text-center text-gray-400 italic">
-                        Nenhum registro encontrado localmente.
+                        Nenhum registro encontrado neste status.
                     </td>
                     </tr>
                 )}
@@ -202,16 +204,17 @@ export default function SugestoesClient() {
         </div>
       </div>
 
-      {/* MODAL CADASTRO LOCAL */}
+      {/* MODAL CADASTRO (USANDO SERVER ACTION) */}
       {isModalCadastroOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-              <h3 className="font-bold text-gray-800">Nova Sugestão (Local)</h3>
+              <h3 className="font-bold text-gray-800">Nova Sugestão</h3>
               <X className="text-gray-400 cursor-pointer hover:text-red-500 transition-colors" onClick={() => setIsModalCadastroOpen(false)} />
             </div>
             
-            <form onSubmit={handleCadastrarLocal} className="p-6 space-y-4">
+            {/* O atributo ACTION chama a Server Action diretamente */}
+            <form action={handleCadastrar} className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Sistema</label>
@@ -254,8 +257,8 @@ export default function SugestoesClient() {
             <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center shadow-inner">
               <Check size={32} strokeWidth={3} />
             </div>
-            <h4 className="text-xl font-bold text-gray-900">Salvo Localmente!</h4>
-            <p className="text-sm text-gray-500">Sua sugestão foi salva no navegador.</p>
+            <h4 className="text-xl font-bold text-gray-900">Sucesso!</h4>
+            <p className="text-sm text-gray-500">Sua sugestão foi enviada para análise.</p>
             <button onClick={() => setIsModalSucessoOpen(false)} className="w-full py-2 bg-gray-900 text-white rounded-xl font-bold text-sm hover:bg-black transition-colors cursor-pointer">Ok</button>
           </div>
         </div>

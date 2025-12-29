@@ -7,7 +7,9 @@ import {
   CheckCircle2, Layers, ListChecks, Settings2, PlusCircle,
   AlertTriangle 
 } from 'lucide-react';
-import { saveGroup, deleteGroup } from '@/app/actions';
+// Certifique-se de que o caminho para saveGroup e deleteGroup está correto
+// Geralmente server actions ficam em uma pasta separada ou no mesmo arquivo se for server component
+import { saveGroup, deleteGroup } from '@/app/actions'; 
 
 // --- INTERFACES ---
 
@@ -40,42 +42,57 @@ interface DatabaseGroup {
   nome: string;
   ordem: number;
   ativo: boolean;
-  // O Prisma retorna arrays dessas relações
-  variacoes: { id: number; nome: string }[];
-  complementos: { id: number; nome: string; preco: string | number; maxQtd: number; obrigatorio: boolean }[];
+  // O Prisma retorna arrays dessas relações, mas pode vir undefined se faltar o include
+  variacoes?: { id: number; nome: string }[];
+  complementos?: { id: number; nome: string; preco: string | number; maxQtd: number; obrigatorio: boolean }[];
+  // Relações que o prisma pode trazer com outros nomes dependendo do schema
+  grupovariacao?: { id: number; nome: string }[];
+  grupocomplemento?: { id: number; nome: string; preco: string | number; maxQtd: number; obrigatorio: boolean }[];
+  produtos?: any[]; // Adicionado para compatibilidade caso venha
 }
 
-interface GruposClientProps {
-  grupos: DatabaseGroup[];
-}
-
-export default function GruposClient({ grupos }: GruposClientProps) {
+export default function GruposClient({ grupos = [] }: { grupos: any[] }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
-  // CONVERSÃO DE DADOS (Banco -> Visual)
-  const convertedGroups: ProductGroup[] = grupos.map((dbGroup) => ({
-    id: dbGroup.id,
-    sequence: dbGroup.ordem,
-    description: dbGroup.nome,
-    active: dbGroup.ativo,
-    // Mapeia Variações do banco para o visual
-    variations: dbGroup.variacoes.map(v => ({ id: v.id, name: v.nome })),
-    // Mapeia Complementos do banco para o visual
-    complements: dbGroup.complementos.map(c => ({ 
-      id: c.id, 
-      name: c.nome, 
-      price: Number(c.preco), 
-      maxQuantity: c.maxQtd, 
-      required: c.obrigatorio 
-    }))
-  }));
+  // CONVERSÃO DE DADOS (Banco -> Visual) COM PROTEÇÃO CONTRA CRASH
+  const processGroups = (rawGroups: any[]): ProductGroup[] => {
+    if (!Array.isArray(rawGroups)) return [];
+    
+    return rawGroups.map((dbGroup: DatabaseGroup) => {
+      // Normalização para lidar com diferentes nomes de campos do Prisma
+      // (Alguns schemas usam variacoes, outros grupovariacao)
+      const rawVariations = dbGroup.variacoes || dbGroup.grupovariacao || [];
+      const rawComplements = dbGroup.complementos || dbGroup.grupocomplemento || [];
 
-  const [groups, setGroups] = useState<ProductGroup[]>(convertedGroups);
+      return {
+        id: dbGroup.id,
+        sequence: dbGroup.ordem || 0,
+        description: dbGroup.nome || 'Sem nome',
+        active: dbGroup.ativo ?? true,
+        // Mapeia Variações com proteção
+        variations: Array.isArray(rawVariations) 
+          ? rawVariations.map((v: any) => ({ id: v.id, name: v.nome }))
+          : [],
+        // Mapeia Complementos com proteção
+        complements: Array.isArray(rawComplements)
+          ? rawComplements.map((c: any) => ({ 
+              id: c.id, 
+              name: c.nome, 
+              price: Number(c.preco) || 0, 
+              maxQuantity: c.maxQtd || 1, 
+              required: !!c.obrigatorio 
+            }))
+          : []
+      };
+    });
+  };
+
+  const [groups, setGroups] = useState<ProductGroup[]>(processGroups(grupos));
   
   // Atualiza lista local sempre que o banco mudar (revalidatePath)
   useEffect(() => {
-    setGroups(convertedGroups);
+    setGroups(processGroups(grupos));
   }, [grupos]);
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -115,8 +132,8 @@ export default function GruposClient({ grupos }: GruposClientProps) {
         sequence: group.sequence.toString(),
         description: group.description,
         active: group.active,
-        variations: group.variations || [],
-        complements: group.complements || []
+        variations: group.variations ? [...group.variations] : [],
+        complements: group.complements ? [...group.complements] : []
       });
     } else {
       setEditingId(null);
@@ -133,31 +150,39 @@ export default function GruposClient({ grupos }: GruposClientProps) {
 
     const dataToSend = {
       id: editingId || 0,
-      sequence: formData.sequence,
+      sequence: Number(formData.sequence) || 0,
       description: formData.description,
       active: formData.active,
       variations: formData.variations, 
       complements: formData.complements
     };
 
-    // Chama a Server Action
-    const result = await saveGroup(dataToSend);
+    try {
+      // Chama a Server Action
+      const result = await saveGroup(dataToSend);
 
-    if (result.success) {
-        setIsModalOpen(false);
-        setShowSuccessModal(true);
-        router.refresh(); // Recarrega os dados da página
-        setTimeout(() => setShowSuccessModal(false), 3000);
-    } else {
-        alert("Erro ao salvar: " + JSON.stringify(result.error));
+      if (result.success) {
+          setIsModalOpen(false);
+          setShowSuccessModal(true);
+          router.refresh(); // Recarrega os dados da página
+          // Não precisa de timeout para fechar o modal de sucesso se tiver botão "Entendido"
+          // mas pode manter se preferir fechar automático
+      } else {
+          alert("Erro ao salvar: " + (result.error || "Erro desconhecido"));
+      }
+    } catch (error) {
+      console.error("Erro ao salvar grupo:", error);
+      alert("Erro de conexão ao salvar.");
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   // --- MANIPULAÇÃO VISUAL DE VARIAÇÕES ---
   const addVariation = () => {
     if (!tempVariation.trim()) return;
-    const newVar = { id: Math.random(), name: tempVariation }; // ID temporário
+    // Usamos timestamp negativo para IDs temporários para evitar colisão com IDs do banco
+    const newVar = { id: -Date.now(), name: tempVariation }; 
     setFormData({ ...formData, variations: [...formData.variations, newVar] });
     setTempVariation('');
   };
@@ -166,7 +191,7 @@ export default function GruposClient({ grupos }: GruposClientProps) {
   const addComplement = () => {
     if (!tempComplement.name.trim()) return;
     const newComp = { 
-      id: Math.random(), 
+      id: -Date.now(), // ID temporário negativo
       name: tempComplement.name, 
       price: parseFloat(tempComplement.price) || 0, 
       maxQuantity: tempComplement.max, 
@@ -188,15 +213,21 @@ export default function GruposClient({ grupos }: GruposClientProps) {
     if (deleteTarget.type === 'group') {
       // Excluir GRUPO inteiro do banco
       setIsLoading(true);
-      const result = await deleteGroup(deleteTarget.id);
-      if (result.success) {
-         setDeleteTarget(null);
-         router.refresh();
-      } else {
-         alert(result.error || "Erro ao excluir grupo.");
-         setDeleteTarget(null);
+      try {
+        const result = await deleteGroup(deleteTarget.id);
+        if (result.success) {
+           setDeleteTarget(null);
+           router.refresh();
+        } else {
+           alert(result.error || "Erro ao excluir grupo.");
+           setDeleteTarget(null);
+        }
+      } catch (error) {
+        console.error("Erro ao excluir:", error);
+        alert("Erro ao tentar excluir.");
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
 
     } else if (deleteTarget.type === 'variation') {
       // Remove visualmente do formulário (só salva no banco ao clicar em "Salvar Alterações")
@@ -415,6 +446,10 @@ export default function GruposClient({ grupos }: GruposClientProps) {
                         </div>
                         <div className="col-span-2">
                              <button type="button" onClick={addComplement} className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex justify-center cursor-pointer"><PlusCircle size={20}/></button>
+                        </div>
+                        <div className="col-span-12 flex items-center gap-2">
+                            <input type="checkbox" id="comp-required" checked={tempComplement.required} onChange={e => setTempComplement({...tempComplement, required: e.target.checked})} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                            <label htmlFor="comp-required" className="text-xs text-gray-600 font-medium">Obrigatório</label>
                         </div>
                     </div>
 

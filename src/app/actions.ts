@@ -102,6 +102,7 @@ export async function saveProduct(data: any) {
       permiteComplemento: data.allowsComplements,      // Salva Switch "Permitir Complemento"
       visivelOnline: data.isVisibleOnline,              // Salva Switch "Visível Online"
       grupoId: grupoIdConectado,
+      atualizadoEm: new Date(),
     };
 
     if (data.id && data.id !== 0) {
@@ -157,5 +158,67 @@ export async function responderAvaliacao(id: number, resposta: string) {
     return { success: true }
   } catch (error) {
     return { success: false, error }
+  }
+}
+// --- AÇÃO DE SALVAR (CRIAR) ---
+export async function saveLancamento(formData: FormData) {
+  const empresaId = 1; // Ajuste conforme sua auth
+
+  // 1. Tratar o Valor (Remover R$, pontos e trocar vírgula por ponto)
+  const valorRaw = formData.get("valor") as string;
+  const valorLimpo = parseFloat(
+    valorRaw
+      .replace("R$", "")       // Remove simbolo
+      .replace(/\./g, "")      // Remove separador de milhar
+      .replace(",", ".")       // Troca virgula decimal por ponto
+      .trim()
+  );
+
+  // 2. Tratar a Data (Converter string para objeto Date)
+  const dataRaw = formData.get("data") as string;
+  
+  // 3. Montar o objeto de dados
+  const dados = {
+    descricao: formData.get("descricao") as string,
+    tipo: formData.get("tipo") as string, // 'entrada' ou 'saida'
+    valor: valorLimpo,
+    data: new Date(dataRaw),
+    categoria: formData.get("categoria") as string,
+    status: formData.get("status") as string,
+    empresaId: empresaId,
+    // criadoEm é preenchido automaticamente pelo @default(now()) no schema
+  };
+
+  try {
+    // ATENÇÃO AQUI: Use prisma.fluxoCaixa (C maiúsculo)
+    await prisma.fluxoCaixa.create({
+      data: dados
+    });
+
+    revalidatePath("/system/financeiro/fluxo"); // Atualiza a tela
+    return { success: true };
+
+  } catch (error) {
+    console.error("Erro ao salvar:", error);
+    return { success: false, error: "Erro ao salvar no banco." };
+  }
+}
+
+// --- AÇÃO DE EXCLUIR ---
+export async function deleteLancamento(id: number) {
+  try {
+    // ATENÇÃO AQUI: Use prisma.fluxoCaixa (C maiúsculo)
+    await prisma.fluxoCaixa.delete({
+      where: { 
+        id: Number(id) 
+      }
+    });
+
+    revalidatePath("/system/financeiro/fluxo");
+    return { success: true };
+
+  } catch (error) {
+    console.error("Erro ao excluir:", error);
+    return { success: false, error: "Erro ao excluir lançamento." };
   }
 }

@@ -18,8 +18,8 @@ export default function LicencasPage() {
   const [copied, setCopied] = useState(false);
 
   const [meusProdutos, setMeusProdutos] = useState([
-    { id: 2, nome: "DATACAIXA PDV", meses: 1, total: 89.00, desconto: 84.55, validade: "31/12/2025" },
-    { id: 3, nome: "DATACAIXA GESTÃO", meses: 1, total: 119.00, desconto: 113.05, validade: "31/12/2025" },
+    { id: 2, nome: "DATACAIXA PDV", meses: 3, total: 239.00, desconto: 227.05, validade: "31/12/2025" },
+    { id: 3, nome: "DATACAIXA GESTÃO", meses: 3, total: 319.00, desconto: 303.05, validade: "31/12/2025" },
   ]);
 
   // Função para copiar a licença
@@ -138,7 +138,7 @@ export default function LicencasPage() {
                           onChange={(e) => handleMonthChange(p.id, e.target.value)}
                           className="mx-auto block bg-white border border-gray-200 rounded-lg px-2 py-1 text-xs outline-none cursor-pointer hover:border-blue-400 transition-all"
                         >
-                          <option value="1">1 mês</option>
+                          <option value="1">3 meses</option>
                           <option value="6">6 meses</option>
                           <option value="12">1 ano</option>
                           <option value="24">2 anos</option>

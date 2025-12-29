@@ -13,7 +13,7 @@ async function main() {
   // 2. Cria a Empresa
   const empresa = await prisma.empresa.create({
     data: {
-      nome: "Luniére Burguer",
+      nomeFantasia: "Luniére Burguer",
       cnpj: "12.345.678/0001-99",
       email: "contato@luniere.com",
     }
@@ -45,7 +45,8 @@ async function main() {
         estoque: 50,
         ativo: true,
         imagem: "https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?auto=format&fit=crop&w=500&q=60",
-        grupoId: grupoLanches.id
+        grupoId: grupoLanches.id,
+        atualizadoEm: new Date()
       },
       {
         nome: "Smash Duplo",
@@ -55,7 +56,8 @@ async function main() {
         estoque: 20,
         ativo: true,
         imagem: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=500&q=60",
-        grupoId: grupoLanches.id
+        grupoId: grupoLanches.id,
+        atualizadoEm: new Date()
       },
       {
         nome: "Coca-Cola Lata",
@@ -65,7 +67,8 @@ async function main() {
         estoque: 100,
         ativo: true,
         imagem: null, // Sem imagem
-        grupoId: grupoBebidas.id
+        grupoId: grupoBebidas.id,
+        atualizadoEm: new Date()
       },
       {
         nome: "Suco de Laranja",
@@ -75,7 +78,8 @@ async function main() {
         estoque: 0, // Esgotado
         ativo: false,
         imagem: "https://images.unsplash.com/photo-1613478223719-2ab802602423?auto=format&fit=crop&w=500&q=60",
-        grupoId: grupoBebidas.id
+        grupoId: grupoBebidas.id,
+        atualizadoEm: new Date()
       }
     ]
   })

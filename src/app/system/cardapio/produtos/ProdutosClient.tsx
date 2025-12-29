@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation'; 
-import { Edit3, Trash2, Search, Package, Plus, X, Save, Upload, AlertTriangle, SlidersHorizontal, ArrowRightLeft, CheckCircle, PlusCircle, DollarSign, Tag, Check, Image as ImageIcon } from 'lucide-react';
+import { Edit3, Trash2, Search, Package, Plus, X, Save, Upload, AlertTriangle, SlidersHorizontal, ArrowRightLeft, CheckCircle, PlusCircle } from 'lucide-react';
 import { saveProduct, deleteProduct } from '@/app/actions'; 
 
 // --- INTERFACES ---
@@ -111,9 +111,12 @@ export default function ProdutosClient({ produtos, gruposDisponiveis }: Produtos
 
   const availableVariations = selectedGroupData?.variacoes || [];
 
+  // Função para lidar com a troca de grupo
   const handleGroupChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedGroup = e.target.value;
     const groupData = gruposDisponiveis.find(g => g.nome === selectedGroup);
+    
+    // Se for novo produto e o grupo tiver variações, já preenche automático
     if (!editingId && groupData && groupData.variacoes && groupData.variacoes.length > 0) {
         setFormData(prev => ({
             ...prev,
@@ -127,15 +130,46 @@ export default function ProdutosClient({ produtos, gruposDisponiveis }: Produtos
             }))
         }));
     } else {
-        setFormData(prev => ({ ...prev, group: selectedGroup, variations: [] }));
+        setFormData(prev => ({ ...prev, group: selectedGroup }));
+    }
+  };
+
+  // --- NOVA FUNÇÃO DE AJUSTE ---
+  // Lida com o Toggle "Com Variações"
+  const handleToggleVariations = () => {
+    const isTurningOn = !formData.hasVariations;
+
+    if (isTurningOn) {
+        // Ao ativar, verifica se o grupo atual tem variações cadastradas
+        const currentGroup = gruposDisponiveis.find(g => g.nome === formData.group);
+        
+        if (currentGroup && currentGroup.variacoes && currentGroup.variacoes.length > 0) {
+            // Se tiver, preenche as variações automaticamente
+            setFormData(prev => ({
+                ...prev,
+                hasVariations: true,
+                variations: currentGroup.variacoes.map(v => ({
+                    id: Math.random().toString(36).substr(2, 9),
+                    name: v.nome,
+                    price: 0,
+                    cost: 0
+                }))
+            }));
+        } else {
+            // Se não tiver variações no grupo, apenas ativa a flag
+            setFormData(prev => ({ ...prev, hasVariations: true, variations: [] }));
+        }
+    } else {
+        // Ao desativar, limpa a flag e o array (opcional limpar o array)
+        setFormData(prev => ({ ...prev, hasVariations: false, variations: [] }));
     }
   };
 
   const ToggleSwitch = ({ label, checked, onChange, color = "bg-blue-600", disabled = false, small = false }: any) => (
-    <div onClick={!disabled ? onChange : undefined} className={`flex items-center justify-between ${small ? 'p-0' : 'py-2'} transition-colors ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:opacity-80'}`}>
+    <div onClick={!disabled ? onChange : undefined} className={`flex items-center justify-between ${small ? 'p-0' : 'p-3 border border-gray-100 bg-gray-50'} rounded-lg transition-colors ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-opacity-80'}`}>
       <span className={`font-medium text-gray-700 ${small ? 'text-xs mr-3' : 'text-sm'}`}>{label}</span>
-      <div className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus:outline-none ${checked ? color : 'bg-gray-300'}`}>
-        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${checked ? 'translate-x-4' : 'translate-x-1'}`} />
+      <div className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none ${checked ? color : 'bg-gray-300'}`}>
+        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
       </div>
     </div>
   );
@@ -334,245 +368,143 @@ export default function ProdutosClient({ produtos, gruposDisponiveis }: Produtos
         ))}
       </div>
 
-        {/* MODAL DE CADASTRO/EDIÇÃO DE PRODUTO */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
-            
-            {/* Header do Modal */}
-            <div className="bg-gray-50/80 px-6 py-4 border-b border-gray-100 flex justify-between items-center backdrop-blur-sm">
-              <div>
-                <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                  {editingId ? <Edit3 size={18} className="text-blue-600"/> : <Plus size={18} className="text-blue-600"/>}
-                  {editingId ? 'Editar Produto' : 'Novo Produto'}
-                </h2>
-                <p className="text-xs text-gray-500 mt-0.5">Preencha os detalhes do item abaixo.</p>
-              </div>
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-200 rounded-full transition-colors cursor-pointer">
-                <X size={20} />
-              </button>
+          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="bg-gray-50 px-6 py-4 border-b flex justify-between items-center">
+              <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">{editingId ? <Edit3 size={20} className="text-blue-600"/> : <Plus size={20} className="text-blue-600"/>}{editingId ? 'Editar Produto' : 'Novo Produto'}</h2>
+              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-200 rounded-full transition-colors cursor-pointer"><X size={24} /></button>
             </div>
-
-            {/* Corpo do Modal (Scrollável) */}
-            <div className="p-6 overflow-y-auto custom-scrollbar bg-white">
-              <form id="productForm" onSubmit={handleSaveProduct} className="space-y-8">
-                
-                {/* Seção 1: Dados Básicos e Imagem */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-                  {/* Coluna da Esquerda (Inputs) */}
-                  <div className="md:col-span-8 space-y-5">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Nome do Produto <span className="text-red-500">*</span></label>
-                      <div className="relative">
-                        <input 
-                          type="text" 
-                          className={`w-full pl-10 pr-4 py-2.5 bg-gray-50 border ${errors.description ? 'border-red-300 ring-1 ring-red-200' : 'border-gray-200'} rounded-xl outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-sm font-medium`}
-                          placeholder="Ex: X-Bacon Artesanal"
-                          value={formData.description} 
-                          onChange={e => setFormData({...formData, description: e.target.value})} 
-                        />
-                        <Tag className="absolute left-3.5 top-3 text-gray-400" size={16}/>
-                      </div>
-                      {errors.description && <span className="text-xs text-red-500 mt-1">{errors.description}</span>}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">Categoria <span className="text-red-500">*</span></label>
-                        <select 
-                          className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-sm font-medium cursor-pointer appearance-none" 
-                          value={formData.group} 
-                          onChange={handleGroupChange}
-                        >
-                          <option value="">Selecione...</option>
-                          {gruposDisponiveis.map((g) => (<option key={g.id} value={g.nome}>{g.nome}</option>))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">Preço Base <span className="text-red-500">*</span></label>
-                        <div className="relative">
-                          <span className="absolute left-3.5 top-2.5 text-gray-500 font-bold text-sm">R$</span>
-                          <input 
-                            type="number" 
-                            step="0.01" 
-                            disabled={formData.hasVariations}
-                            className={`w-full pl-10 pr-4 py-2.5 bg-gray-50 border ${errors.price ? 'border-red-300' : 'border-gray-200'} rounded-xl outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-sm font-medium ${formData.hasVariations ? 'opacity-50 cursor-not-allowed bg-gray-100' : ''}`} 
-                            value={isNaN(formData.price) ? '' : formData.price} 
-                            onChange={e => setFormData({...formData, price: parseFloat(e.target.value)})} 
-                            placeholder="0.00"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Coluna da Direita (Upload de Imagem) */}
-                  <div className="md:col-span-4">
-                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">Imagem</label>
-                    <div className="relative h-40 w-full border-2 border-dashed border-gray-300 rounded-xl hover:bg-gray-50 transition-colors group cursor-pointer overflow-hidden bg-gray-50">
-                      <input type="file" accept="image/*" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onChange={handleImageUpload}/>
-                      {formData.image ? (
-                        <img src={formData.image} alt="Preview" className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="flex flex-col items-center justify-center h-full text-gray-400 group-hover:text-blue-500 transition-colors">
-                          <ImageIcon size={32} strokeWidth={1.5} />
-                          <span className="text-xs font-medium mt-2">Enviar Foto</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+            <form onSubmit={handleSaveProduct} className="p-6 overflow-y-auto custom-scrollbar">
+              <div className="space-y-4 mb-6">
+                <div><label className="block text-sm font-medium text-gray-700 mb-1">Nome do Produto *</label><input type="text" className="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} /></div>
+                <div><label className="block text-sm font-medium text-gray-700 mb-1">Categoria *</label><select className="w-full px-4 py-2 border rounded-lg bg-white outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer" value={formData.group} onChange={handleGroupChange}><option value="">Selecione...</option>{gruposDisponiveis.map((g) => (<option key={g.id} value={g.nome}>{g.nome}</option>))}</select></div>
+              </div>
+              <div className="border rounded-xl mb-6 bg-white border-gray-200 shadow-sm overflow-hidden">
+                <div className="bg-gray-50/80 px-4 py-3 border-b flex justify-between items-center">
+                    <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2 cursor-pointer"><SlidersHorizontal size={14}/> Preçificação</h3>
+                    
+                    {/* AQUI ESTÁ A ALTERAÇÃO NO JSX */}
+                    <ToggleSwitch 
+                        small 
+                        label={formData.hasVariations ? "Com Variações" : "Preço Único"} 
+                        checked={formData.hasVariations} 
+                        onChange={handleToggleVariations} 
+                    />
                 </div>
+                <div className="p-4">
+                  {!formData.hasVariations ? (
+                      <div className="grid grid-cols-2 gap-4"><div><label className="block text-xs font-medium text-gray-500 mb-1">Preço Venda *</label><div className="relative"><span className="absolute left-3 top-2 text-gray-400 text-sm">R$</span><input type="number" step="0.01" className="w-full pl-9 pr-2 py-2 border rounded-lg outline-none" value={isNaN(formData.price)?'':formData.price} onChange={e => setFormData({...formData, price: parseFloat(e.target.value)})} /></div></div></div>
+                  ) : (
+                    <div className="animate-in slide-in-from-top-2 duration-200 space-y-3">
+                        {availableVariations.length === 0 ? (
+                           <div className="bg-amber-50 border border-amber-100 p-4 rounded-xl text-xs text-amber-700 flex gap-3 items-center">
+                               <AlertTriangle size={18} className="shrink-0 text-amber-500"/> 
+                               <span>Este grupo não possui variações cadastradas. Vá até a tela de <strong>Grupos</strong> para padronizar os tamanhos e tipos desta categoria.</span>
+                           </div>
+                        ) : (
+                           <div className="bg-blue-50 border border-blue-100 p-3 rounded-xl text-xs text-blue-700 flex gap-2 items-center">
+                               <AlertTriangle size={14} className="shrink-0"/> 
+                               <span>Padronização ativa: Escolha os tamanhos definidos no grupo.</span>
+                           </div>
+                        )}
 
-                <div className="border-t border-gray-100"></div>
+                        <div className="flex flex-col gap-3 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
+                            {formData.variations.map((item) => (
+                                <div key={item.id} className="flex gap-3 items-center bg-gray-50/50 p-3 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-white transition-all shadow-sm group">
+                                    <div className="flex-1">
+                                        <label className="text-[10px] text-gray-400 font-bold uppercase ml-1 mb-1 block tracking-wider">Tamanho / Tipo</label>
+                                        <div className="relative">
+                                            <select 
+                                                className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none appearance-none cursor-pointer font-medium text-gray-700 shadow-sm"
+                                                value={item.name}
+                                                onChange={(e) => updateVariation(item.id, 'name', e.target.value)}
+                                            >
+                                                <option value="" disabled>Escolher...</option>
+                                                {availableVariations.map(v => (
+                                                    <option key={v.id} value={v.nome}>{v.nome}</option>
+                                                ))}
+                                            </select>
+                                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                                                <ArrowRightLeft size={14} className="rotate-90" />
+                                            </div>
+                                        </div>
+                                    </div>
 
-                {/* Seção 2: Configurações (Toggles) */}
-                <div>
-                  <h3 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
-                    <SlidersHorizontal size={16} className="text-blue-600"/> Configurações de Exibição
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 bg-gray-50 p-4 rounded-xl border border-gray-100">
-                    <ToggleSwitch label="Produto Ativo" checked={formData.active} onChange={() => setFormData({...formData, active: !formData.active})} color="bg-green-500" />
-                    <ToggleSwitch label="Permitir Complementos" checked={formData.allowsComplements} onChange={() => setFormData({...formData, allowsComplements: !formData.allowsComplements})} />
-                    <ToggleSwitch label="Controlar Estoque" checked={formData.isAvailableOnline} onChange={() => setFormData({...formData, isAvailableOnline: !formData.isAvailableOnline})} />
-                    <ToggleSwitch label="Visível no Cardápio Online" checked={formData.isVisibleOnline} onChange={() => setFormData({...formData, isVisibleOnline: !formData.isVisibleOnline})} />
-                  </div>
-                </div>
+                                    <div className="w-32">
+                                        <label className="text-[10px] text-gray-400 font-bold uppercase ml-1 mb-1 block tracking-wider">Preço Venda</label>
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">R$</span>
+                                            <input 
+                                                type="number" step="0.01"
+                                                className="w-full bg-white border border-gray-200 rounded-lg pl-8 pr-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-bold text-gray-800 shadow-sm"
+                                                value={isNaN(item.price) ? '' : item.price}
+                                                onChange={(e) => updateVariation(item.id, 'price', parseFloat(e.target.value))}
+                                            />
+                                        </div>
+                                    </div>
 
-                {/* Seção 3: Variações */}
-                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-                  <div className="bg-gray-50/80 px-5 py-3 border-b border-gray-200 flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-1.5 rounded-lg ${formData.hasVariations ? 'bg-blue-100 text-blue-600' : 'bg-gray-200 text-gray-500'}`}>
-                        <ArrowRightLeft size={16} />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-bold text-gray-800">Variações de Preço</h3>
-                        <p className="text-[10px] text-gray-500 leading-none">Ex: Pequeno, Médio, Grande</p>
-                      </div>
-                    </div>
-                    <ToggleSwitch small label={formData.hasVariations ? "Ativado" : "Desativado"} checked={formData.hasVariations} onChange={() => setFormData({...formData, hasVariations: !formData.hasVariations})} />
-                  </div>
-
-                  {formData.hasVariations && (
-                    <div className="p-5 animate-in slide-in-from-top-2 duration-300">
-                      {availableVariations.length === 0 ? (
-                        <div className="bg-amber-50 border border-amber-100 p-4 rounded-xl text-xs text-amber-700 flex gap-3 items-center">
-                          <AlertTriangle size={18} className="shrink-0 text-amber-500"/> 
-                          <span>Este grupo não possui variações cadastradas. Vá até a tela de <strong>Grupos</strong> para padronizar os tamanhos.</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2 mb-4 bg-blue-50 border border-blue-100 px-3 py-2 rounded-lg text-xs text-blue-700">
-                          <AlertTriangle size={14} className="shrink-0"/> 
-                          <span>Selecione os tamanhos definidos no grupo.</span>
-                        </div>
-                      )}
-
-                      <div className="space-y-3 mt-4">
-                        {formData.variations.map((item) => (
-                          <div key={item.id} className="flex gap-3 items-end bg-gray-50 p-3 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-white transition-all group">
-                            <div className="flex-1">
-                              <label className="text-[10px] uppercase font-bold text-gray-400 ml-1 mb-1 block tracking-wider">Tamanho / Tipo</label>
-                              <div className="relative">
-                                <select 
-                                  className="w-full bg-white border border-gray-200 rounded-lg pl-3 pr-8 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none appearance-none cursor-pointer font-medium text-gray-700 shadow-sm"
-                                  value={item.name}
-                                  onChange={(e) => updateVariation(item.id, 'name', e.target.value)}
-                                >
-                                  <option value="" disabled>Escolher...</option>
-                                  {availableVariations.map(v => (
-                                    <option key={v.id} value={v.nome}>{v.nome}</option>
-                                  ))}
-                                </select>
-                                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                                  <ArrowRightLeft size={14} className="rotate-90" />
+                                    <button 
+                                        type="button" 
+                                        onClick={() => openVariationDeleteModal(item.id)}
+                                        className="mt-5 p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all cursor-pointer opacity-0 group-hover:opacity-100"
+                                    >
+                                        <Trash2 size={18} />
+                                    </button>
                                 </div>
-                              </div>
-                            </div>
-
-                            <div className="w-32">
-                              <label className="text-[10px] uppercase font-bold text-gray-400 ml-1 mb-1 block tracking-wider">Preço</label>
-                              <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">R$</span>
-                                <input 
-                                  type="number" step="0.01"
-                                  className="w-full bg-white border border-gray-200 rounded-lg pl-8 pr-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-bold text-gray-800 shadow-sm"
-                                  value={isNaN(item.price) ? '' : item.price}
-                                  onChange={(e) => updateVariation(item.id, 'price', parseFloat(e.target.value))}
-                                  placeholder="0.00"
-                                />
-                              </div>
-                            </div>
-
-                            <button 
-                              type="button" 
-                              onClick={() => openVariationDeleteModal(item.id)}
-                              className="mb-1 p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
-                            >
-                              <Trash2 size={18} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-
-                      <button 
-                        type="button" 
-                        onClick={addVariation}
-                        disabled={availableVariations.length === 0}
-                        className={`w-full mt-4 py-3 border-2 border-dashed rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all 
-                          ${availableVariations.length === 0 
-                            ? 'bg-gray-50 border-gray-200 text-gray-300 cursor-not-allowed' 
-                            : 'border-gray-300 text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 cursor-pointer'}`}
-                      >
-                        <PlusCircle size={18} /> 
-                        {availableVariations.length === 0 ? "Grupo sem variações padronizadas" : "Adicionar Variação"}
-                      </button>
+                            ))}
+                        </div>
+                        
+                        <button 
+                            type="button" 
+                            onClick={addVariation}
+                            disabled={availableVariations.length === 0}
+                            className={`w-full py-3 border-2 border-dashed rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all 
+                                ${availableVariations.length === 0 
+                                    ? 'bg-gray-50 border-gray-200 text-gray-300 cursor-not-allowed' 
+                                    : 'border-gray-200 text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 cursor-pointer'}`}
+                        >
+                            <PlusCircle size={18} /> 
+                            {availableVariations.length === 0 ? "Grupo sem variações padronizadas" : "Adicionar Variação"}
+                        </button>
                     </div>
                   )}
                 </div>
-
-              </form>
-            </div>
-
-            {/* Footer do Modal */}
-            <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3 sticky bottom-0">
-              <button 
-                type="button" 
-                onClick={() => setIsModalOpen(false)} 
-                disabled={isLoading}
-                className="px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer disabled:opacity-50"
-              >
-                Cancelar
-              </button>
-              <button 
-                type="submit" 
-                form="productForm"
-                disabled={isLoading}
-                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold shadow-md hover:shadow-lg transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
-              >
-                {isLoading ? 'Salvando...' : <><Save size={18} /> Salvar Produto</>}
-              </button>
-            </div>
-
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <div><label className="block text-sm font-medium text-gray-700 mb-1">Imagem</label><div className="flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:bg-gray-50 transition-colors relative cursor-pointer group h-48"><div className="space-y-1 text-center flex flex-col items-center justify-center h-full w-full">{formData.image ? (<div className="relative w-full h-full"><img src={formData.image} alt="Preview" className="mx-auto w-full h-full object-contain" /></div>) : (<><Upload className="mx-auto h-8 w-8 text-gray-400" /><span className="text-sm text-blue-600 font-medium">Clique para enviar</span></>)}<input type="file" accept="image/*" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={handleImageUpload}/></div></div></div>
+                 <div className="space-y-3">
+                    <h3 className="text-sm font-bold text-gray-800 border-b pb-1">Configurações</h3>
+                    <ToggleSwitch label="Produto Ativo" checked={formData.active} onChange={() => setFormData({...formData, active: !formData.active})} color="bg-green-600"/>
+                    <ToggleSwitch label="Permitir Complemento" checked={formData.allowsComplements} onChange={() => setFormData({...formData, allowsComplements: !formData.allowsComplements})} />
+                    <ToggleSwitch label="Disponível (Estoque)" checked={formData.isAvailableOnline} onChange={() => setFormData({...formData, isAvailableOnline: !formData.isAvailableOnline})} />
+                    <ToggleSwitch label="Visível Online" checked={formData.isVisibleOnline} onChange={() => setFormData({...formData, isVisibleOnline: !formData.isVisibleOnline})} />
+                 </div>
+              </div>
+              <div className="pt-6 flex justify-end gap-3 border-t border-gray-100 mt-6">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors cursor-pointer">Cancelar</button>
+                <button type="submit" disabled={isLoading} className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium flex items-center gap-2 shadow-lg shadow-blue-600/20 transition-all disabled:opacity-50 cursor-pointer">{isLoading ? 'Salvando...' : <><Save size={18} /> Salvar Produto</>}</button>
+              </div>
+            </form>
           </div>
         </div>
       )}
 
-      {/* Modais Secundários (Sucesso, Delete, etc) permanecem iguais */}
-      {isSuccessModalOpen && (<div className="fixed inset-0 z-[10002] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in"><div className="bg-white rounded-2xl p-8 text-center shadow-2xl"><div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-green-600"><CheckCircle size={32}/></div><h3 className="font-bold text-xl text-gray-900">Sucesso!</h3><p className="text-gray-500 mt-2 mb-6">Produto salvo com sucesso.</p><button onClick={() => setIsSuccessModalOpen(false)} className="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl cursor-pointer transition-colors shadow-lg">OK, Entendido</button></div></div>)}
+      {isSuccessModalOpen && (<div className="fixed inset-0 z-[10002] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in"><div className="bg-white rounded-2xl p-6 text-center"><CheckCircle size={32} className="text-green-600 mx-auto mb-2"/><h3 className="font-bold">Sucesso!</h3><button onClick={() => setIsSuccessModalOpen(false)} className="mt-4 px-4 py-2 bg-green-600 text-white rounded-lg cursor-pointer">OK, Entendido</button></div></div>)}
       
-      {isDeleteModalOpen && (<div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in zoom-in-95"><div className="bg-white w-full max-w-sm rounded-2xl shadow-xl p-6 text-center"><div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4"><Trash2 className="text-red-600" size={32} /></div><h3 className="text-xl font-bold text-gray-800 mb-2">Excluir Produto?</h3><p className="text-sm text-gray-500 mb-6">Esta ação não pode ser desfeita.</p><div className="flex gap-3 justify-center"><button onClick={() => setIsDeleteModalOpen(false)} className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-colors cursor-pointer">Cancelar</button><button onClick={confirmDeleteProduct} className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-lg shadow-red-200 transition-colors cursor-pointer">Sim, Excluir</button></div></div></div>)}
+      {isDeleteModalOpen && (<div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"><div className="bg-white w-full max-w-sm rounded-2xl shadow-xl p-6 text-center"><div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4"><Trash2 className="text-red-600" size={32} /></div><h3 className="text-xl font-bold text-gray-800 mb-2">Excluir Produto?</h3><div className="flex gap-3 justify-center"><button onClick={() => setIsDeleteModalOpen(false)} className="flex-1 px-4 py-2 bg-gray-100 rounded-lg cursor-pointer">Não</button><button onClick={confirmDeleteProduct} className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg cursor-pointer">Sim</button></div></div></div>)}
 
       {isVariationDeleteModalOpen && (
-        <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in zoom-in-95">
+        <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in">
           <div className="bg-white w-full max-w-sm rounded-2xl shadow-xl p-6 text-center">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Trash2 className="text-red-600" size={32} />
             </div>
             <h3 className="text-xl font-bold text-gray-800 mb-2">Remover Variação?</h3>
-            <p className="text-gray-500 text-sm mb-6">Tem certeza que deseja remover esta opção de preço?</p>
+            <p className="text-gray-500 text-sm mb-6">Tem certeza que deseja remover esta variação de preço?</p>
             <div className="flex gap-3 justify-center">
-              <button onClick={() => setIsVariationDeleteModalOpen(false)} className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-colors cursor-pointer">Cancelar</button>
-              <button onClick={confirmRemoveVariation} className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-lg shadow-red-200 transition-colors cursor-pointer">Sim, Remover</button>
+              <button onClick={() => setIsVariationDeleteModalOpen(false)} className="flex-1 px-4 py-2 bg-gray-100 rounded-lg cursor-pointer">Não</button>
+              <button onClick={confirmRemoveVariation} className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg cursor-pointer">Sim</button>
             </div>
           </div>
         </div>

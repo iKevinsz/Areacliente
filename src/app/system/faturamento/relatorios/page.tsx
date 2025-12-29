@@ -1,17 +1,17 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { 
   Calendar, Filter, Download, Printer, 
   Search, TrendingUp, CreditCard, DollarSign, 
-  AlertCircle, ChevronDown, ArrowUpRight, ArrowDownRight
+  AlertCircle, ArrowUpRight, ArrowDownRight
 } from "lucide-react";
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, 
   Tooltip, ResponsiveContainer 
 } from 'recharts';
 
-// Dados Mockados para o Gráfico
+// --- DADOS MOCKADOS ---
 const dadosGrafico = [
   { nome: '01/12', valor: 4000 },
   { nome: '05/12', valor: 3000 },
@@ -22,18 +22,70 @@ const dadosGrafico = [
   { nome: '30/12', valor: 3490 },
 ];
 
-// Dados Mockados para a Tabela
 const transacoesIniciais = [
   { id: "#10234", data: "27/12/2025 14:30", cliente: "Consumidor Final", pagto: "Crédito", valor: 150.00, status: "Aprovado" },
   { id: "#10235", data: "27/12/2025 14:45", cliente: "João Silva", pagto: "PIX", valor: 320.50, status: "Aprovado" },
   { id: "#10236", data: "27/12/2025 15:10", cliente: "Maria Oliveira", pagto: "Débito", valor: 45.90, status: "Aprovado" },
   { id: "#10237", data: "27/12/2025 15:30", cliente: "Consumidor Final", pagto: "Dinheiro", valor: 12.00, status: "Cancelado" },
   { id: "#10238", data: "27/12/2025 16:00", cliente: "Empresa XYZ", pagto: "Boleto", valor: 1250.00, status: "Pendente" },
+  // Adicionei mais alguns dados para testar melhor os filtros
+  { id: "#10239", data: "27/12/2025 16:15", cliente: "Carlos Souza", pagto: "Crédito", valor: 200.00, status: "Pendente" },
+  { id: "#10240", data: "27/12/2025 16:30", cliente: "Ana Clara", pagto: "PIX", valor: 50.00, status: "Aprovado" },
 ];
 
 export default function RelatorioFaturamentoPage() {
-  const [periodo, setPeriodo] = useState("Este Mês");
+  // --- ESTADOS DOS INPUTS (O que o usuário seleciona) ---
+  const [inputPeriodo, setInputPeriodo] = useState("Este Mês");
+  const [inputPagamento, setInputPagamento] = useState("Todas as Formas");
+  const [inputStatus, setInputStatus] = useState("Todos");
+  const [busca, setBusca] = useState("");
+
+  // --- ESTADOS DOS FILTROS ATIVOS (O que realmente filtra a tabela) ---
+  // Apenas atualizamos isso quando o usuário clica em "Filtrar"
+  const [filtrosAtivos, setFiltrosAtivos] = useState({
+    periodo: "Este Mês",
+    pagamento: "Todas as Formas",
+    status: "Todos"
+  });
+
   const [isLoading, setIsLoading] = useState(false);
+
+  // --- LÓGICA DE FILTRAGEM ---
+  const transacoesFiltradas = useMemo(() => {
+    return transacoesIniciais.filter((t) => {
+      // 1. Filtro de Busca (Texto) - ID ou Cliente
+      const termoBusca = busca.toLowerCase();
+      const matchBusca = t.id.toLowerCase().includes(termoBusca) || 
+                         t.cliente.toLowerCase().includes(termoBusca);
+
+      // 2. Filtro de Pagamento
+      const matchPagto = filtrosAtivos.pagamento === "Todas as Formas" 
+        ? true 
+        : t.pagto === filtrosAtivos.pagamento;
+
+      // 3. Filtro de Status
+      const matchStatus = filtrosAtivos.status === "Todos"
+        ? true
+        : t.status === filtrosAtivos.status;
+
+      // Retorna true apenas se passar em TODOS os critérios
+      return matchBusca && matchPagto && matchStatus;
+    });
+  }, [busca, filtrosAtivos]);
+
+  // --- APLICAÇÃO DOS FILTROS (Botão Filtrar) ---
+  const handleFiltrar = () => {
+    setIsLoading(true);
+    // Simula um delay de rede
+    setTimeout(() => {
+      setFiltrosAtivos({
+        periodo: inputPeriodo,
+        pagamento: inputPagamento,
+        status: inputStatus
+      });
+      setIsLoading(false);
+    }, 600);
+  };
 
   // --- FUNÇÃO DE IMPRESSÃO ---
   const handlePrint = () => {
@@ -42,8 +94,9 @@ export default function RelatorioFaturamentoPage() {
 
   // --- FUNÇÃO DE EXPORTAR EXCEL (CSV) ---
   const handleExportExcel = () => {
+    // Exporta os dados FILTRADOS, não os iniciais
     const headers = ["ID Venda;Data/Hora;Cliente;Pagamento;Valor;Status"];
-    const rows = transacoesIniciais.map(t => {
+    const rows = transacoesFiltradas.map(t => {
       const valorFormatado = t.valor.toFixed(2).replace('.', ',');
       return `${t.id};${t.data};${t.cliente};${t.pagto};${valorFormatado};${t.status}`;
     });
@@ -52,54 +105,28 @@ export default function RelatorioFaturamentoPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", "relatorio_faturamento.csv");
+    link.setAttribute("download", "relatorio_faturamento_filtrado.csv");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  const handleFiltrar = () => {
-    setIsLoading(true);
-    setTimeout(() => setIsLoading(false), 1000);
-  };
-
   return (
-    // Adicionamos o ID 'printable-content' aqui para o CSS capturar
     <div id="printable-content" className="flex flex-col gap-6 animate-in fade-in duration-500 bg-gray-50 min-h-screen p-4 md:p-0">
       
       {/* ESTILOS DE IMPRESSÃO GLOBAIS */}
       <style jsx global>{`
         @media print {
-          /* Esconde tudo na página por padrão */
-          body * {
-            visibility: hidden;
-          }
-          /* Torna visível apenas o conteúdo do relatório */
-          #printable-content, #printable-content * {
-            visibility: visible;
-          }
-          /* Posiciona o relatório no topo da página impressa */
+          body * { visibility: hidden; }
+          #printable-content, #printable-content * { visibility: visible; }
           #printable-content {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            background: white;
-            color: black;
-            padding: 20px;
-            margin: 0;
+            position: absolute; left: 0; top: 0; width: 100%;
+            background: white; color: black; padding: 20px; margin: 0;
           }
-          /* Remove sombras e bordas extras na impressão */
-          .print\\:shadow-none {
-            box-shadow: none !important;
-          }
-          .print\\:border-none {
-            border: none !important;
-          }
-          /* Garante que gráficos e tabelas não sejam cortados */
-          .recharts-wrapper {
-            margin: 0 auto;
-          }
+          .print\\:shadow-none { box-shadow: none !important; }
+          .print\\:border-none { border: none !important; }
+          .print\\:hidden { display: none !important; }
+          .recharts-wrapper { margin: 0 auto; }
         }
       `}</style>
 
@@ -114,7 +141,6 @@ export default function RelatorioFaturamentoPage() {
           </p>
         </div>
         
-        {/* Botões ocultos na impressão */}
         <div className="flex gap-2 print:hidden">
           <button 
             onClick={handlePrint}
@@ -131,16 +157,17 @@ export default function RelatorioFaturamentoPage() {
         </div>
       </div>
 
-      {/* BARRA DE FILTROS - oculta na impressão */}
+      {/* BARRA DE FILTROS */}
       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 items-end md:items-center print:hidden">
         <div className="w-full md:w-auto flex-1 grid grid-cols-1 md:grid-cols-4 gap-4">
           
+          {/* Filtro Período */}
           <div className="space-y-1">
             <label className="text-xs font-bold text-gray-500 uppercase">Período</label>
             <div className="relative">
               <select 
-                value={periodo}
-                onChange={(e) => setPeriodo(e.target.value)}
+                value={inputPeriodo}
+                onChange={(e) => setInputPeriodo(e.target.value)}
                 className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer"
               >
                 <option>Hoje</option>
@@ -153,28 +180,39 @@ export default function RelatorioFaturamentoPage() {
             </div>
           </div>
 
+          {/* Filtro Pagamento */}
           <div className="space-y-1">
             <label className="text-xs font-bold text-gray-500 uppercase">Pagamento</label>
             <div className="relative">
-              <select className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:border-blue-500 outline-none appearance-none cursor-pointer">
+              <select 
+                value={inputPagamento}
+                onChange={(e) => setInputPagamento(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:border-blue-500 outline-none appearance-none cursor-pointer"
+              >
                 <option>Todas as Formas</option>
                 <option>Crédito</option>
                 <option>Débito</option>
                 <option>Dinheiro</option>
                 <option>PIX</option>
+                <option>Boleto</option>
               </select>
               <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
             </div>
           </div>
 
+          {/* Filtro Status */}
           <div className="space-y-1">
             <label className="text-xs font-bold text-gray-500 uppercase">Status</label>
             <div className="relative">
-              <select className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:border-blue-500 outline-none appearance-none cursor-pointer">
+              <select 
+                value={inputStatus}
+                onChange={(e) => setInputStatus(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:border-blue-500 outline-none appearance-none cursor-pointer"
+              >
                 <option>Todos</option>
-                <option>Aprovados</option>
-                <option>Cancelados</option>
-                <option>Pendentes</option>
+                <option>Aprovado</option>
+                <option>Cancelado</option>
+                <option>Pendente</option>
               </select>
               <AlertCircle className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
             </div>
@@ -182,14 +220,15 @@ export default function RelatorioFaturamentoPage() {
 
           <button 
             onClick={handleFiltrar}
-            className="h-[38px] mt-auto w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer"
+            disabled={isLoading}
+            className="h-[38px] mt-auto w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
           >
             {isLoading ? "Filtrando..." : <><Filter size={16} /> Filtrar</>}
           </button>
         </div>
       </div>
 
-      {/* CARDS DE KPI */}
+      {/* CARDS DE KPI (Estáticos para exemplo, mas poderiam ser calculados com transacoesFiltradas) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 print:grid-cols-3 print:gap-4">
         <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm relative overflow-hidden print:shadow-none print:border-gray-300">
           <div className="absolute right-0 top-0 p-4 opacity-5">
@@ -223,7 +262,7 @@ export default function RelatorioFaturamentoPage() {
           </div>
           <div className="relative z-10">
             <p className="text-sm font-medium text-gray-500 mb-1">Qtd. Vendas</p>
-            <h3 className="text-3xl font-bold text-gray-800">342</h3>
+            <h3 className="text-3xl font-bold text-gray-800">{transacoesFiltradas.length}</h3>
             <div className="flex items-center gap-1 mt-2 text-xs font-bold text-red-500 bg-red-50 w-fit px-2 py-1 rounded-full print:bg-transparent print:text-black">
               <ArrowDownRight size={12} /> -0.5% vs mês anterior
             </div>
@@ -284,13 +323,14 @@ export default function RelatorioFaturamentoPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
             <input 
               type="text" 
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
               placeholder="Buscar por ID ou Cliente..." 
               className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:border-blue-500 outline-none"
             />
           </div>
         </div>
         
-        {/* Adicionado 'print:overflow-visible' para a tabela não cortar na impressão */}
         <div className="overflow-x-auto print:overflow-visible">
           <table className="w-full text-left">
             <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-bold tracking-wider print:bg-gray-100">
@@ -304,42 +344,48 @@ export default function RelatorioFaturamentoPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {transacoesIniciais.map((t) => (
-                <tr key={t.id} className="hover:bg-blue-50/30 transition-colors text-sm cursor-default">
-                  <td className="px-6 py-4 font-bold text-blue-600 print:text-black">{t.id}</td>
-                  <td className="px-6 py-4 text-gray-600">{t.data}</td>
-                  <td className="px-6 py-4 font-medium text-gray-800">{t.cliente}</td>
-                  <td className="px-6 py-4 text-gray-600">{t.pagto}</td>
-                  <td className="px-6 py-4 font-bold text-gray-800">
-                    {t.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1
-                      ${t.status === 'Aprovado' ? 'bg-green-100 text-green-700' : ''}
-                      ${t.status === 'Cancelado' ? 'bg-red-100 text-red-700' : ''}
-                      ${t.status === 'Pendente' ? 'bg-yellow-100 text-yellow-700' : ''}
-                      print:bg-transparent print:text-black print:border print:border-gray-300
-                    `}>
-                      {t.status === 'Aprovado' && <span className="w-1.5 h-1.5 rounded-full bg-green-500 print:hidden"></span>}
-                      {t.status === 'Cancelado' && <span className="w-1.5 h-1.5 rounded-full bg-red-500 print:hidden"></span>}
-                      {t.status === 'Pendente' && <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 print:hidden"></span>}
-                      {t.status}
-                    </span>
+              {transacoesFiltradas.length > 0 ? (
+                transacoesFiltradas.map((t) => (
+                  <tr key={t.id} className="hover:bg-blue-50/30 transition-colors text-sm cursor-default">
+                    <td className="px-6 py-4 font-bold text-blue-600 print:text-black">{t.id}</td>
+                    <td className="px-6 py-4 text-gray-600">{t.data}</td>
+                    <td className="px-6 py-4 font-medium text-gray-800">{t.cliente}</td>
+                    <td className="px-6 py-4 text-gray-600">{t.pagto}</td>
+                    <td className="px-6 py-4 font-bold text-gray-800">
+                      {t.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1
+                        ${t.status === 'Aprovado' ? 'bg-green-100 text-green-700' : ''}
+                        ${t.status === 'Cancelado' ? 'bg-red-100 text-red-700' : ''}
+                        ${t.status === 'Pendente' ? 'bg-yellow-100 text-yellow-700' : ''}
+                        print:bg-transparent print:text-black print:border print:border-gray-300
+                      `}>
+                        {t.status === 'Aprovado' && <span className="w-1.5 h-1.5 rounded-full bg-green-500 print:hidden"></span>}
+                        {t.status === 'Cancelado' && <span className="w-1.5 h-1.5 rounded-full bg-red-500 print:hidden"></span>}
+                        {t.status === 'Pendente' && <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 print:hidden"></span>}
+                        {t.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                    Nenhuma transação encontrada com os filtros selecionados.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
 
-        {/* Paginação oculta na impressão */}
+        {/* Paginação */}
         <div className="p-4 border-t border-gray-100 flex justify-between items-center text-sm text-gray-500 print:hidden">
-          <span>Mostrando 5 de 142 registros</span>
+          <span>Mostrando {transacoesFiltradas.length} registros</span>
           <div className="flex gap-2">
             <button className="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed">Anterior</button>
             <button className="px-3 py-1 border rounded bg-blue-50 text-blue-600 font-bold border-blue-200 cursor-pointer">1</button>
-            <button className="px-3 py-1 border rounded hover:bg-gray-50 cursor-pointer">2</button>
-            <button className="px-3 py-1 border rounded hover:bg-gray-50 cursor-pointer">3</button>
             <button className="px-3 py-1 border rounded hover:bg-gray-50 cursor-pointer">Próximo</button>
           </div>
         </div>

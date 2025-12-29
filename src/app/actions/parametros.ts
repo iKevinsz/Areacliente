@@ -9,15 +9,14 @@ export async function salvarParametros(empresaId: number, data: any) {
     await prisma.empresa.update({
       where: { id: Number(empresaId) },
       data: {
-        // Flags Gerais
         lojaFechada: data.geral.lojaFechada,
         ocultarCardapio: data.geral.ocultarCardapio,
         enviarWhatsapp: data.geral.enviarWhatsapp,
         cpfObrigatorio: data.geral.cpfObrigatorio,
         cepObrigatorio: data.geral.cepObrigatorio,
         calculoPreco: data.geral.calculoPreco,
+        valorMinimo: Number(data.geral.valorMinimo || 0), // Adicionado conversão numérica
         
-        // JSONs de Configuração
         configPagamento: {
           opcoes: data.pagamento.opcoes,
           gateways: data.pagamento.gateways,
@@ -34,14 +33,14 @@ export async function salvarParametros(empresaId: number, data: any) {
       },
     });
 
-    // 2. Atualizar Horários (Limpa e recria)
+    // 2. Atualizar Horários (Correção: horariosFuncionamento)
     await prisma.horarioFuncionamento.deleteMany({ where: { empresaId } });
     if (data.horarios && data.horarios.length > 0) {
       await prisma.horarioFuncionamento.createMany({
         data: data.horarios.map((h: any) => ({
           empresaId,
           dia: h.dia,
-          diaIndex: h.id === 0 ? 0 : h.id, // Garante que Domingo seja 0 ou 7 conforme sua lógica
+          diaIndex: h.id === 0 ? 0 : h.id,
           ativo: h.ativo,
           inicio: h.inicio,
           fim: h.fim
@@ -49,7 +48,7 @@ export async function salvarParametros(empresaId: number, data: any) {
       });
     }
 
-    // 3. Atualizar Pausas
+    // 3. Atualizar Pausas (Correção: pausas)
     await prisma.pausa.deleteMany({ where: { empresaId } });
     if (data.pausas && data.pausas.length > 0) {
       await prisma.pausa.createMany({
@@ -62,7 +61,7 @@ export async function salvarParametros(empresaId: number, data: any) {
       });
     }
 
-    // 4. Atualizar Cupons
+    // 4. Atualizar Cupons (Correção: cupons)
     await prisma.cupom.deleteMany({ where: { empresaId } });
     if (data.cupons && data.cupons.length > 0) {
       await prisma.cupom.createMany({
@@ -79,11 +78,10 @@ export async function salvarParametros(empresaId: number, data: any) {
       });
     }
 
-    // 5. Atualizar Regras de Frete (Bairros e KM)
+    // 5. Atualizar Regras de Frete (Correção: regrasFrete)
     await prisma.regraFrete.deleteMany({ where: { empresaId } });
     const regrasParaCriar = [];
 
-    // Adiciona regras de Bairro
     if (data.bairros && data.bairros.length > 0) {
       regrasParaCriar.push(...data.bairros.map((b: any) => ({
         empresaId,
@@ -93,7 +91,6 @@ export async function salvarParametros(empresaId: number, data: any) {
       })));
     }
 
-    // Adiciona regras de KM
     if (data.regrasKm && data.regrasKm.length > 0) {
       regrasParaCriar.push(...data.regrasKm.map((k: any) => ({
         empresaId,
@@ -108,7 +105,7 @@ export async function salvarParametros(empresaId: number, data: any) {
       await prisma.regraFrete.createMany({ data: regrasParaCriar });
     }
 
-    // 6. Atualizar Exceções de CEP
+    // 6. Atualizar Exceções (Correção: excecoesFrete)
     await prisma.excecaoFrete.deleteMany({ where: { empresaId } });
     if (data.excecoesCep && data.excecoesCep.length > 0) {
       await prisma.excecaoFrete.createMany({
@@ -124,7 +121,7 @@ export async function salvarParametros(empresaId: number, data: any) {
     return { success: true };
 
   } catch (error: any) {
-    console.error("Erro ao salvar parâmetros:", error);
-    return { success: false, error: "Erro interno no servidor: " + error.message };
+    console.error("Erro detalhado ao salvar:", error);
+    return { success: false, error: "Erro interno: " + error.message };
   }
 }
