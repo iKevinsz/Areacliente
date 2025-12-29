@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 export default function EmpresaPage() {
   return (
     <div className="p-6">
@@ -219,3 +220,11 @@ export default function HomePage() {
   )
 }
 >>>>>>> 41fc8df85f1e632cbee79edbcc9aa6d26ceb263f
+=======
+import { redirect } from "next/navigation";
+
+export default function Home() {
+  // Redireciona imediatamente para a rota de login
+  redirect("/login");
+}
+>>>>>>> dev
