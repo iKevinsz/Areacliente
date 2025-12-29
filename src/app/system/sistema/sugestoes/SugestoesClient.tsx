@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { 
   Plus, ThumbsUp, Search, MessageSquare, 
-  Clock, CheckCircle2, X, Send, Check 
+  Clock, CheckCircle2, X, Send, Check, ChevronRight 
 } from "lucide-react";
 import { criarSugestao, toggleLikeAction } from "@/app/actions/sugestoes"; 
 
@@ -19,17 +19,10 @@ interface Sugestao {
 
 export default function SugestoesClient({ dadosIniciais }: { dadosIniciais: Sugestao[] }) {
   const [activeTab, setActiveTab] = useState<string>("pendente");
-  const [filtroSistema, setFiltroSistema] = useState("Todos");
   const [buscaTexto, setBuscaTexto] = useState("");
-  
-  // Modais
   const [isModalCadastroOpen, setIsModalCadastroOpen] = useState(false);
   const [isModalSucessoOpen, setIsModalSucessoOpen] = useState(false);
-  
-  // Persistência local de votos
   const [votosRealizados, setVotosRealizados] = useState<number[]>([]);
-
-  // Atualiza a lista sempre que o banco mudar (via props do server component)
   const [listaSugestoes, setListaSugestoes] = useState<Sugestao[]>(dadosIniciais);
   
   useEffect(() => {
@@ -38,35 +31,27 @@ export default function SugestoesClient({ dadosIniciais }: { dadosIniciais: Suge
 
   useEffect(() => {
     const votosSalvos = localStorage.getItem("meus_votos_sugestoes");
-    if (votosSalvos) {
-      setVotosRealizados(JSON.parse(votosSalvos));
-    }
+    if (votosSalvos) setVotosRealizados(JSON.parse(votosSalvos));
   }, []);
 
-  // Filtros
   const sugestoesFiltradas = useMemo(() => {
     return listaSugestoes.filter((s) => {
       const bateStatus = s.status === activeTab;
-      const bateSistema = filtroSistema === "Todos" || s.sistema === filtroSistema;
       const bateTexto = s.descricao.toLowerCase().includes(buscaTexto.toLowerCase());
-      return bateStatus && bateSistema && bateTexto;
+      return bateStatus && bateTexto;
     });
-  }, [activeTab, filtroSistema, buscaTexto, listaSugestoes]);
+  }, [activeTab, buscaTexto, listaSugestoes]);
 
-  // --- LÓGICA DE LIKE COM BANCO DE DADOS ---
   const handleLike = async (id: number) => {
     const jaVotou = votosRealizados.includes(id);
     let novosVotos: number[];
     let incrementar = false;
 
-    // 1. Atualização Otimista (Visual instantâneo)
     if (jaVotou) {
-      // Remover voto
       setListaSugestoes(prev => prev.map(s => s.id === id ? { ...s, curtidas: s.curtidas - 1 } : s));
       novosVotos = votosRealizados.filter(votoId => votoId !== id);
       incrementar = false;
     } else {
-      // Adicionar voto
       setListaSugestoes(prev => prev.map(s => s.id === id ? { ...s, curtidas: s.curtidas + 1 } : s));
       novosVotos = [...votosRealizados, id];
       incrementar = true;
@@ -74,22 +59,15 @@ export default function SugestoesClient({ dadosIniciais }: { dadosIniciais: Suge
 
     setVotosRealizados(novosVotos);
     localStorage.setItem("meus_votos_sugestoes", JSON.stringify(novosVotos));
-
-    // 2. Atualização no Banco (Server Action)
     await toggleLikeAction(id, incrementar);
   };
 
-  // --- CADASTRO COM BANCO DE DADOS ---
   const handleCadastrar = async (formData: FormData) => {
-    // A chamada é feita via atributo 'action' do form ou manualmente aqui
-    // Vamos usar a action importada
     const resultado = await criarSugestao(formData);
-
     if (resultado.success) {
       setIsModalCadastroOpen(false);
       setIsModalSucessoOpen(true);
       setTimeout(() => setIsModalSucessoOpen(false), 3000);
-      // O revalidatePath no servidor vai atualizar os dadosIniciais automaticamente
     } else {
       alert("Erro ao salvar sugestão.");
     }
@@ -99,43 +77,46 @@ export default function SugestoesClient({ dadosIniciais }: { dadosIniciais: Suge
     <div className="p-4 md:p-8 bg-gray-50 min-h-screen font-sans text-gray-800">
       
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-gray-600 flex items-center gap-2">
-          Sistema / <span className="text-gray-900">Sugestões e Melhorias</span>
+        <h1 className="text-xl md:text-2xl font-black text-gray-900 flex items-center gap-2">
+          Sugestões <span className="text-gray-400 font-medium hidden sm:inline">/ Melhorias</span>
         </h1>
       </div>
 
-      <div className="max-w-[1600px] mx-auto space-y-6">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+      <div className="max-w-6xl mx-auto space-y-6">
+        
+        {/* AÇÕES DE TOPO RESPONSIVAS */}
+        <div className="flex flex-col-reverse md:flex-row justify-between items-stretch md:items-center gap-4">
             <button 
                 onClick={() => setIsModalCadastroOpen(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-bold text-sm shadow-lg shadow-blue-200 flex items-center gap-2 transition-all active:scale-95 cursor-pointer"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-100 flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer"
             >
-                <Plus size={18} /> Cadastrar Sugestão de Melhoria
+                <Plus size={18} /> Sugerir Melhoria
             </button>
 
             <div className="relative w-full md:w-96">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 <input 
                     type="text" 
-                    placeholder="Buscar por descrição..." 
-                    className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white shadow-sm"
+                    placeholder="Pesquisar sugestão..." 
+                    className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 bg-white shadow-sm text-sm"
                     value={buscaTexto}
                     onChange={(e) => setBuscaTexto(e.target.value)}
                 />
             </div>
         </div>
 
-        <div className="border-b border-gray-200">
-          <div className="flex gap-8 overflow-x-auto">
+        {/* ABAS COM SCROLL NO MOBILE */}
+        <div className="border-b border-gray-200 overflow-x-auto no-scrollbar">
+          <div className="flex gap-4 md:gap-8 min-w-max px-1">
             {[
-              { id: "pendente", label: "Pendente", icon: <Clock size={16} /> },
-              { id: "andamento", label: "Em Andamento", icon: <MessageSquare size={16} /> },
-              { id: "finalizada", label: "Finalizada", icon: <CheckCircle2 size={16} /> }
+              { id: "pendente", label: "Pendentes", icon: <Clock size={16} /> },
+              { id: "andamento", label: "Em curso", icon: <MessageSquare size={16} /> },
+              { id: "finalizada", label: "Concluídas", icon: <CheckCircle2 size={16} /> }
             ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 py-4 px-2 text-sm font-bold transition-all border-b-2 cursor-pointer whitespace-nowrap ${
+                className={`flex items-center gap-2 py-4 px-2 text-xs md:text-sm font-black uppercase tracking-tighter transition-all border-b-2 cursor-pointer ${
                   activeTab === tab.id ? "border-blue-600 text-blue-600" : "border-transparent text-gray-400 hover:text-gray-600"
                 }`}
               >
@@ -145,124 +126,147 @@ export default function SugestoesClient({ dadosIniciais }: { dadosIniciais: Suge
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
+        {/* LISTAGEM RESPONSIVA */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          
+          {/* MOBILE VIEW (CARDS) */}
+          <div className="md:hidden divide-y divide-gray-50">
+            {sugestoesFiltradas.length > 0 ? (
+              sugestoesFiltradas.map((s) => (
+                <div key={s.id} className="p-4 space-y-3 active:bg-gray-50 transition-colors">
+                  <div className="flex justify-between items-start gap-2">
+                    <span className="text-[10px] font-mono text-gray-400">{s.data}</span>
+                    <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase ${
+                      s.classificacao === 'Erro' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'
+                    }`}>
+                      {s.classificacao}
+                    </span>
+                  </div>
+                  <p className="text-sm font-bold text-gray-800 leading-tight">{s.descricao}</p>
+                  <div className="flex justify-between items-center pt-2">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{s.sistema}</span>
+                    <button 
+                        onClick={() => handleLike(s.id)}
+                        disabled={s.status === "finalizada"}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl font-black text-xs transition-all ${
+                            votosRealizados.includes(s.id) ? "bg-blue-600 text-white shadow-md" : "bg-gray-100 text-gray-600"
+                        }`}
+                    >
+                        <ThumbsUp size={14} /> {s.curtidas}
+                    </button>
+                  </div>
+                </div>
+              ))
+            ) : <div className="p-12 text-center text-gray-400 text-xs font-bold uppercase italic">Nada por aqui...</div>}
+          </div>
+
+          {/* DESKTOP VIEW (TABLE) */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left">
-                <thead className="bg-[#414d5f] text-white text-[10px] uppercase font-bold tracking-wider">
-                <tr>
-                    <th className="px-6 py-4 text-center w-32">Data</th>
-                    <th className="px-6 py-4">Descrição</th>
-                    <th className="px-6 py-4">Sistema</th>
-                    <th className="px-6 py-4">Classificação</th>
-                    <th className="px-6 py-4 text-center w-32">Ações</th>
-                </tr>
+                <thead className="bg-[#414d5f] text-white text-[10px] uppercase font-black tracking-widest">
+                  <tr>
+                      <th className="px-6 py-4 text-center w-32">Data</th>
+                      <th className="px-6 py-4">Sugestão / Melhoria</th>
+                      <th className="px-6 py-4">Módulo</th>
+                      <th className="px-6 py-4">Prioridade</th>
+                      <th className="px-6 py-4 text-center w-32">Votos</th>
+                  </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                {sugestoesFiltradas.length > 0 ? (
-                    sugestoesFiltradas.map((s) => (
-                    <tr key={s.id} className="text-sm hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 text-gray-500 text-center font-mono whitespace-nowrap">{s.data}</td>
-                        <td className="px-6 py-4 font-medium text-gray-700">{s.descricao}</td>
-                        <td className="px-6 py-4 text-gray-600 whitespace-nowrap">{s.sistema}</td>
-                        <td className="px-6 py-4">
-                        <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase whitespace-nowrap ${
-                            s.classificacao === 'Erro' ? 'bg-red-50 text-red-600' : 
-                            s.classificacao === 'IMPORTANTE' ? 'bg-orange-50 text-orange-600' : 'bg-gray-100 text-gray-500'
+                {sugestoesFiltradas.map((s) => (
+                  <tr key={s.id} className="text-sm hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-5 text-gray-500 text-center font-mono text-xs">{s.data}</td>
+                      <td className="px-6 py-5 font-bold text-gray-700">{s.descricao}</td>
+                      <td className="px-6 py-5 text-gray-600 text-xs font-bold uppercase">{s.sistema}</td>
+                      <td className="px-6 py-5">
+                        <span className={`text-[10px] font-black px-2 py-1 rounded uppercase ${
+                            s.classificacao === 'Erro' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'
                         }`}>
                             {s.classificacao}
                         </span>
-                        </td>
-                        <td className="px-6 py-4 text-center">
+                      </td>
+                      <td className="px-6 py-5 text-center">
                         <button 
                             onClick={() => handleLike(s.id)}
                             disabled={s.status === "finalizada"}
-                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all font-bold text-xs uppercase ${
-                                s.status === "finalizada" 
-                                ? "bg-gray-50 text-gray-400 cursor-not-allowed opacity-50" 
-                                : votosRealizados.includes(s.id)
-                                    ? "bg-blue-100 text-blue-700 hover:bg-red-50 hover:text-red-600 cursor-pointer ring-1 ring-blue-200"
-                                    : "text-blue-600 hover:bg-blue-50 cursor-pointer active:scale-95 border border-blue-100"
+                            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl transition-all font-black text-xs uppercase ${
+                                votosRealizados.includes(s.id)
+                                ? "bg-blue-600 text-white shadow-lg shadow-blue-100"
+                                : "text-blue-600 hover:bg-blue-50 border border-blue-100"
                             }`}
-                            title={votosRealizados.includes(s.id) ? "Remover voto" : "Votar nesta sugestão"}
                         >
-                            {votosRealizados.includes(s.id) ? <Check size={14} /> : <ThumbsUp size={14} />}
-                            {s.curtidas}
+                            <ThumbsUp size={14} /> {s.curtidas}
                         </button>
-                        </td>
-                    </tr>
-                    ))
-                ) : (
-                    <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-gray-400 italic">
-                        Nenhum registro encontrado neste status.
-                    </td>
-                    </tr>
-                )}
+                      </td>
+                  </tr>
+                ))}
                 </tbody>
             </table>
           </div>
         </div>
       </div>
 
-      {/* MODAL CADASTRO (USANDO SERVER ACTION) */}
+      {/* MODAL CADASTRO ADAPTÁVEL */}
       {isModalCadastroOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-              <h3 className="font-bold text-gray-800">Nova Sugestão</h3>
-              <X className="text-gray-400 cursor-pointer hover:text-red-500 transition-colors" onClick={() => setIsModalCadastroOpen(false)} />
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-lg rounded-t-3xl md:rounded-2xl shadow-2xl animate-in slide-in-from-bottom md:zoom-in-95 duration-300 overflow-hidden">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <h3 className="font-black text-gray-900 uppercase text-sm tracking-widest">Nova Sugestão</h3>
+              <button onClick={() => setIsModalCadastroOpen(false)} className="p-2 bg-white rounded-full shadow-sm"><X size={18} /></button>
             </div>
             
-            {/* O atributo ACTION chama a Server Action diretamente */}
-            <form action={handleCadastrar} className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Sistema</label>
-                  <select name="sistema" className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-blue-500 cursor-pointer">
+            <form action={handleCadastrar} className="p-6 space-y-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Módulo</label>
+                  <select name="sistema" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500">
                     <option>Datacaixa PDV</option>
                     <option>Datacaixa Gestão</option>
-                    <option>Datacaixa Garçom</option>
                   </select>
                 </div>
-                <div>
-                  <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Classificação</label>
-                  <select name="classificacao" className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-blue-500 cursor-pointer">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Tipo</label>
+                  <select name="classificacao" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="Melhoria">Melhoria</option>
-                    <option value="Erro">Erro / Bug</option>
-                    <option value="IMPORTANTE">IMPORTANTE</option>
+                    <option value="Erro">Bug / Erro</option>
                   </select>
                 </div>
               </div>
-              <div>
-                <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Descrição Detalhada</label>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Sua sugestão</label>
                 <textarea 
                   name="descricao"
                   required rows={4}
-                  placeholder="Descreva sua sugestão de forma clara..."
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-blue-500 resize-none"
+                  placeholder="Seja objetivo e claro..."
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                 />
               </div>
-              <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold text-sm hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-md shadow-blue-100 active:scale-95 cursor-pointer">
-                <Send size={16} /> Cadastrar Sugestão
+              <button type="submit" className="w-full bg-gray-900 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all flex items-center justify-center gap-2 shadow-xl active:scale-95">
+                <Send size={16} /> ENVIAR AGORA
               </button>
             </form>
           </div>
         </div>
       )}
 
-      {/* MODAL SUCESSO */}
+      {/* FEEDBACK SUCESSO CENTRALIZADO */}
       {isModalSucessoOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/20 backdrop-blur-[2px] animate-in fade-in duration-300">
-          <div className="bg-white rounded-3xl p-8 shadow-2xl flex flex-col items-center text-center space-y-4 animate-in zoom-in-90 duration-300 max-w-xs border border-green-50">
-            <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center shadow-inner">
-              <Check size={32} strokeWidth={3} />
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl p-8 shadow-2xl flex flex-col items-center text-center space-y-4 animate-in zoom-in-90 max-w-xs border border-green-100">
+            <div className="w-20 h-20 bg-green-50 text-green-600 rounded-full flex items-center justify-center shadow-inner">
+              <Check size={40} strokeWidth={3} />
             </div>
-            <h4 className="text-xl font-bold text-gray-900">Sucesso!</h4>
-            <p className="text-sm text-gray-500">Sua sugestão foi enviada para análise.</p>
-            <button onClick={() => setIsModalSucessoOpen(false)} className="w-full py-2 bg-gray-900 text-white rounded-xl font-bold text-sm hover:bg-black transition-colors cursor-pointer">Ok</button>
+            <h4 className="text-xl font-black text-gray-900 uppercase tracking-tighter">Recebido!</h4>
+            <p className="text-sm text-gray-500 font-medium">Sua contribuição é muito importante para nós.</p>
+            <button onClick={() => setIsModalSucessoOpen(false)} className="w-full py-3 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all">FECHAR</button>
           </div>
         </div>
       )}
+
+      <style jsx global>{`
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
     </div>
   );
 }

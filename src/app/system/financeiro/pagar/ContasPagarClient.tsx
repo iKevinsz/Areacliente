@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Plus, Search, Filter, Calendar, AlertCircle, CheckCircle2, 
-  FileText, Trash2, Edit3, DollarSign, X, Save, AlertTriangle 
+  FileText, Trash2, Edit3, DollarSign, X, Save, AlertTriangle, ChevronRight 
 } from 'lucide-react';
 
 interface Conta {
@@ -115,125 +115,156 @@ export default function ContasPagarPage() {
       vencido: 'bg-red-100 text-red-700 border-red-200',
     };
     const labels = { pago: 'Pago', pendente: 'A Vencer', vencido: 'Vencido' };
-    return <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${styles[status as keyof typeof styles]}`}>{labels[status as keyof typeof labels]}</span>;
+    return <span className={`px-2 md:px-3 py-1 rounded-full text-[10px] md:text-xs font-semibold border ${styles[status as keyof typeof styles]}`}>{labels[status as keyof typeof labels]}</span>;
   };
 
   return (
-    <div className="min-h-screen bg-gray-50/50 p-6 space-y-6">
+    <div className="min-h-screen bg-gray-50/50 p-4 md:p-6 space-y-6">
       
       {/* HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">Contas a Pagar Local</h1>
-          <p className="text-gray-500 text-sm">Gerencie suas despesas offline (salvo no navegador).</p>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-800 flex items-center gap-2">Contas a Pagar</h1>
+          <p className="text-gray-500 text-xs md:text-sm">Gerencie suas despesas offline.</p>
         </div>
-        <button onClick={() => handleOpenModal()} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition-all text-sm font-medium cursor-pointer">
+        <button onClick={() => handleOpenModal()} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-md transition-all text-sm font-medium cursor-pointer active:scale-95">
           <Plus size={18} /> Nova Conta
         </button>
       </div>
 
       {/* KPI CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <KPICard title="A Pagar (Aberto)" value={totalPendente} icon={<DollarSign className="text-yellow-600" />} color="bg-yellow-50 border-yellow-100" textColor="text-yellow-700"/>
-        <KPICard title="Vencido (Urgente)" value={totalVencido} icon={<AlertCircle className="text-red-600" />} color="bg-red-50 border-red-100" textColor="text-red-700"/>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <KPICard title="A Pagar" value={totalPendente} icon={<DollarSign className="text-yellow-600" />} color="bg-yellow-50 border-yellow-100" textColor="text-yellow-700"/>
+        <KPICard title="Vencido" value={totalVencido} icon={<AlertCircle className="text-red-600" />} color="bg-red-50 border-red-100" textColor="text-red-700"/>
         <KPICard title="Pago" value={totalPago} icon={<CheckCircle2 className="text-green-600" />} color="bg-green-50 border-green-100" textColor="text-green-700"/>
       </div>
 
       {/* FILTROS */}
-      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col xl:flex-row gap-4 justify-between items-end xl:items-center">
-        <div className="flex flex-col md:flex-row gap-4 w-full xl:w-auto">
-          <div className="relative w-full md:w-72">
+      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-4">
+        <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
+          <div className="relative w-full lg:w-96">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-            <input type="text" placeholder="Buscar fornecedor ou descrição..." className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            <input type="text" placeholder="Buscar..." className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
-          <div className="flex bg-gray-100 p-1 rounded-lg self-start">
+          
+          <div className="flex bg-gray-100 p-1 rounded-lg w-full sm:w-auto overflow-x-auto no-scrollbar">
             {['todos', 'pendente', 'vencido', 'pago'].map((status) => (
-              <button key={status} onClick={() => setFilterStatus(status as any)} className={`px-3 py-1.5 rounded-md text-xs font-medium capitalize transition-all cursor-pointer ${filterStatus === status ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>{status}</button>
+              <button key={status} onClick={() => setFilterStatus(status as any)} className={`flex-1 sm:flex-none px-3 py-1.5 rounded-md text-xs font-medium capitalize transition-all cursor-pointer whitespace-nowrap ${filterStatus === status ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>{status}</button>
             ))}
           </div>
         </div>
-        <div className="flex items-center gap-2 w-full xl:w-auto bg-gray-50 p-2 rounded-lg border border-gray-100">
-            <span className="text-xs font-semibold text-gray-500 uppercase flex items-center gap-1"><Calendar size={14}/> Período:</span>
-            <input type="date" className="bg-white border border-gray-200 text-gray-600 text-xs rounded px-2 py-1.5 outline-none cursor-pointer" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-            <span className="text-gray-400 text-xs">até</span>
-            <input type="date" className="bg-white border border-gray-200 text-gray-600 text-xs rounded px-2 py-1.5 outline-none cursor-pointer" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-            {(startDate || endDate) && <button onClick={() => {setStartDate(''); setEndDate('')}} className="text-xs text-red-500 hover:text-red-700 underline ml-1 cursor-pointer">Limpar</button>}
+        
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 bg-gray-50 p-2 rounded-lg border border-gray-100">
+            <span className="text-[10px] font-bold text-gray-400 uppercase flex items-center gap-1 ml-1"><Calendar size={14}/> Período:</span>
+            <div className="flex items-center gap-2 w-full">
+              <input type="date" className="flex-1 sm:flex-none bg-white border border-gray-200 text-gray-600 text-xs rounded-lg px-2 py-1.5 outline-none" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+              <span className="text-gray-400 text-xs">atê</span>
+              <input type="date" className="flex-1 sm:flex-none bg-white border border-gray-200 text-gray-600 text-xs rounded-lg px-2 py-1.5 outline-none" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+              {(startDate || endDate) && <button onClick={() => {setStartDate(''); setEndDate('')}} className="text-xs text-red-500 font-bold ml-1">X</button>}
+            </div>
         </div>
       </div>
 
-      {/* TABELA */}
+      {/* TABELA / LISTA MOBILE */}
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Descrição / Fornecedor</th>
-              <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Categoria</th>
-              <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Vencimento</th>
-              <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Valor</th>
-              <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase text-center">Status</th>
-              <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase text-right">Ações</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {filteredContas.length > 0 ? (
-              filteredContas.map((conta) => (
-                <tr key={conta.id} className="hover:bg-gray-50/80 transition-colors group cursor-pointer" onClick={() => handleOpenModal(conta)}>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg ${conta.status === 'pago' ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'}`}>
-                        {conta.status === 'pago' ? <CheckCircle2 size={18}/> : <FileText size={18} />}
-                      </div>
-                      <div>
-                        <div className={`text-sm font-bold ${conta.status === 'pago' ? 'text-gray-500 line-through' : 'text-gray-800'}`}>{conta.descricao}</div>
-                        <div className="text-xs text-gray-500">{conta.fornecedor}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4"><span className="text-xs font-medium text-gray-600 bg-gray-100 px-2 py-1 rounded border border-gray-200">{conta.categoria}</span></td>
-                  <td className="px-6 py-4 text-sm text-gray-600 font-medium">{formatDate(conta.vencimento)}</td>
-                  <td className="px-6 py-4 text-sm font-bold text-gray-800">{formatMoney(conta.valor)}</td>
-                  <td className="px-6 py-4 flex justify-center">
-                    <StatusBadge status={conta.status} />
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={(e) => { e.stopPropagation(); handleOpenModal(conta); }} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer" title="Editar"><Edit3 size={16} /></button>
-                      <button onClick={(e) => openDeleteModal(conta.id, e)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer" title="Excluir"><Trash2 size={16} /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            ) : (
+        {/* VIEW DESKTOP */}
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <td colSpan={6} className="px-6 py-12 text-center text-gray-400 bg-gray-50/50">
-                  <div className="flex flex-col items-center justify-center gap-2"><Filter size={32} className="opacity-20" /><p>Nenhuma despesa encontrada.</p></div>
-                </td>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Descrição</th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Categoria</th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Vencimento</th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Valor</th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase text-center">Status</th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase text-right">Ações</th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filteredContas.length > 0 ? (
+                filteredContas.map((conta) => (
+                  <tr key={conta.id} className="hover:bg-gray-50/80 transition-colors group cursor-pointer" onClick={() => handleOpenModal(conta)}>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-lg ${conta.status === 'pago' ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'}`}>
+                          {conta.status === 'pago' ? <CheckCircle2 size={18}/> : <FileText size={18} />}
+                        </div>
+                        <div>
+                          <div className={`text-sm font-bold ${conta.status === 'pago' ? 'text-gray-500 line-through' : 'text-gray-800'}`}>{conta.descricao}</div>
+                          <div className="text-xs text-gray-500">{conta.fornecedor}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4"><span className="text-xs font-medium text-gray-600 bg-gray-100 px-2 py-1 rounded border border-gray-200">{conta.categoria}</span></td>
+                    <td className="px-6 py-4 text-sm text-gray-600 font-medium">{formatDate(conta.vencimento)}</td>
+                    <td className="px-6 py-4 text-sm font-bold text-gray-800">{formatMoney(conta.valor)}</td>
+                    <td className="px-6 py-4 text-center"><StatusBadge status={conta.status} /></td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={(e) => { e.stopPropagation(); handleOpenModal(conta); }} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"><Edit3 size={16} /></button>
+                        <button onClick={(e) => openDeleteModal(conta.id, e)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Trash2 size={16} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <NoData colSpan={6} isTable />
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* VIEW MOBILE */}
+        <div className="md:hidden divide-y divide-gray-100">
+          {filteredContas.length > 0 ? (
+            filteredContas.map((conta) => (
+              <div key={conta.id} className="p-4 active:bg-gray-50 transition-colors cursor-pointer flex items-center justify-between" onClick={() => handleOpenModal(conta)}>
+                <div className="flex gap-3 min-w-0">
+                  <div className={`p-2 rounded-lg h-fit ${conta.status === 'pago' ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'}`}>
+                    {conta.status === 'pago' ? <CheckCircle2 size={18}/> : <FileText size={18} />}
+                  </div>
+                  <div className="min-w-0">
+                    <div className={`text-sm font-bold truncate ${conta.status === 'pago' ? 'text-gray-500 line-through' : 'text-gray-800'}`}>{conta.descricao}</div>
+                    <div className="text-[10px] text-gray-500 mb-1">{conta.fornecedor}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-gray-700">{formatMoney(conta.valor)}</span>
+                      <span className="text-[10px] text-gray-400">•</span>
+                      <span className="text-[10px] text-gray-500 font-medium">{formatDate(conta.vencimento)}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-2 shrink-0 ml-2">
+                  <StatusBadge status={conta.status} />
+                  <ChevronRight size={16} className="text-gray-300" />
+                </div>
+              </div>
+            ))
+          ) : (
+            <NoData />
+          )}
+        </div>
       </div>
 
-      {/* --- MODAL AJUSTADO PARA O PADRAO --- */}
+      {/* MODAL PRINCIPAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-2 sm:zoom-in-95 duration-200">
             <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-              <h2 className="text-lg font-bold text-gray-800">{editingId ? 'Editar Conta' : 'Nova Conta a Pagar'}</h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-200 rounded-full cursor-pointer transition-colors"><X size={20} /></button>
+              <h2 className="text-lg font-bold text-gray-800">{editingId ? 'Editar Conta' : 'Nova Conta'}</h2>
+              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 p-1 hover:bg-gray-200 rounded-full"><X size={20} /></button>
             </div>
             
-            <form onSubmit={handleSaveConta} className="p-6 space-y-4">
+            <form onSubmit={handleSaveConta} className="p-6 space-y-4 overflow-y-auto max-h-[80vh]">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1 font-bold uppercase tracking-wide">Descrição *</label>
-                <input type="text" required className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" placeholder="Ex: Aluguel" 
+                <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Descrição *</label>
+                <input type="text" required className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ex: Aluguel" 
                   value={formData.descricao} onChange={e => setFormData({...formData, descricao: e.target.value})} />
               </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1 font-bold uppercase tracking-wide">Valor (R$) *</label>
-                  <input type="text" required className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" placeholder="R$ 0,00" 
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Valor *</label>
+                  <input type="text" required className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="R$ 0,00" 
                     value={formData.valor ? formData.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : ''} 
                     onChange={(e) => {
                       const val = e.target.value.replace(/\D/g, "");
@@ -242,62 +273,116 @@ export default function ContasPagarPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1 font-bold uppercase tracking-wide">Vencimento *</label>
-                  <input type="date" required className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none cursor-pointer focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" 
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Vencimento *</label>
+                  <input type="date" required className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" 
                     value={formData.vencimento} onChange={e => setFormData({...formData, vencimento: e.target.value})} />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1 font-bold uppercase tracking-wide">Fornecedor</label>
-                <input type="text" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" placeholder="Ex: Imobiliária" 
-                  value={formData.fornecedor} onChange={e => setFormData({...formData, fornecedor: e.target.value})} />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1 font-bold uppercase tracking-wide">Categoria</label>
-                  <input type="text" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" placeholder="Ex: Fixa"
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Fornecedor</label>
+                  <input type="text" className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ex: Imobiliária" 
+                    value={formData.fornecedor} onChange={e => setFormData({...formData, fornecedor: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Categoria</label>
+                  <input type="text" className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ex: Fixa"
                     value={formData.categoria} onChange={e => setFormData({...formData, categoria: e.target.value})} />
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1 font-bold uppercase tracking-wide">Situação (Status)</label>
-                  <select className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none cursor-pointer focus:ring-2 focus:ring-blue-500 bg-white transition-all"
-                    value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as any})} >
-                    <option value="pendente">Pendente</option>
-                    <option value="pago">Pago</option>
-                    <option value="vencido">Vencido</option>
-                  </select>
-                </div>
               </div>
 
-              <div className="pt-4 flex gap-3">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors cursor-pointer">Cancelar</button>
-                <button type="submit" disabled={isLoading} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-100 disabled:opacity-70 active:scale-95 cursor-pointer">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Status</label>
+                <select className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as any})} >
+                  <option value="pendente">Pendente</option>
+                  <option value="pago">Pago</option>
+                  <option value="vencido">Vencido</option>
+                </select>
+              </div>
+
+              <div className="pt-4 flex flex-col-reverse sm:flex-row gap-3">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50">Cancelar</button>
+                <button type="submit" disabled={isLoading} className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm hover:bg-blue-700 font-bold flex items-center justify-center gap-2 shadow-lg shadow-blue-100 disabled:opacity-70 active:scale-95">
                   {isLoading ? 'Salvando...' : <><Save size={16} /> Salvar Conta</>}
                 </button>
               </div>
+              {editingId && (
+                <button type="button" onClick={(e) => openDeleteModal(editingId, e as any)} className="w-full text-xs text-red-500 font-bold py-2 mt-2 hover:bg-red-50 rounded-lg transition-colors">
+                  Excluir Despesa
+                </button>
+              )}
             </form>
           </div>
         </div>
       )}
 
-      {/* FEEDBACK MODALS */}
-      {isDeleteModalOpen && (<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"><div className="bg-white w-full max-w-sm rounded-2xl shadow-xl p-6 text-center animate-in zoom-in-95"><div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600"><Trash2 size={32} /></div><h3 className="text-xl font-bold text-gray-800 mb-2">Excluir Conta?</h3><p className="text-sm text-gray-500 mb-6">Remover esta despesa permanentemente?</p><div className="flex gap-3 justify-center"><button onClick={() => setIsDeleteModalOpen(false)} className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors cursor-pointer">Cancelar</button><button onClick={handleConfirmDelete} className="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 shadow-lg shadow-red-100 transition-all cursor-pointer">Sim, Excluir</button></div></div></div>)}
-      {isValidationModalOpen && (<div className="fixed inset-0 z-[60000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"><div className="bg-white rounded-2xl shadow-xl p-6 text-center w-full max-w-sm animate-in zoom-in-95"><div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4 text-orange-600"><AlertTriangle size={32} /></div><h3 className="text-xl font-bold mb-2 text-gray-800">Campos Obrigatórios</h3><p className="text-sm text-gray-600 mb-6">Preencha Descrição, Valor e Vencimento.</p><button onClick={() => setIsValidationModalOpen(false)} className="w-full bg-orange-600 text-white py-2.5 rounded-xl font-bold hover:bg-orange-700 transition-all shadow-lg shadow-orange-100 cursor-pointer">Entendido</button></div></div>)}
-      {showSuccessModal && (<div className="fixed inset-0 z-[60000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"><div className="bg-white rounded-2xl shadow-xl p-6 text-center w-full max-w-sm animate-in zoom-in-95"><div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-green-600"><CheckCircle2 size={32} /></div><h3 className="text-xl font-bold mb-2 text-gray-900">Sucesso!</h3><p className="text-sm text-gray-500 mb-6 text-center">Os dados foram salvos com sucesso.</p><button onClick={() => setShowSuccessModal(false)} className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 cursor-pointer">OK</button></div></div>)}
+      {/* MODAL DE EXCLUSÃO */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-sm rounded-2xl shadow-xl p-6 text-center animate-in zoom-in-95">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600">
+              <Trash2 size={32} />
+            </div>
+            <h3 className="text-xl font-bold text-gray-800 mb-2">Excluir Conta?</h3>
+            <p className="text-sm text-gray-500 mb-6">Remover esta despesa permanentemente?</p>
+            <div className="flex gap-3">
+              <button onClick={() => setIsDeleteModalOpen(false)} className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200">Não</button>
+              <button onClick={handleConfirmDelete} className="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 shadow-lg shadow-red-100">Sim</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FEEDBACKS GERAIS */}
+      {isValidationModalOpen && <FeedbackModal type="warning" title="Campos Obrigatórios" desc="Preencha Descrição, Valor e Vencimento." btnText="Entendido" btnColor="bg-orange-600" onClose={() => setIsValidationModalOpen(false)} />}
+      {showSuccessModal && <FeedbackModal type="success" title="Sucesso!" desc="Dados salvos com sucesso." btnText="OK" btnColor="bg-blue-600" onClose={() => setShowSuccessModal(false)} />}
     </div>
   );
 }
 
 const KPICard = ({ title, value, icon, color, textColor }: any) => (
-  <div className={`p-5 rounded-xl border shadow-sm flex items-center justify-between ${color}`}>
-    <div>
-      <p className={`text-xs font-bold uppercase tracking-wide opacity-80 ${textColor}`}>{title}</p>
-      <h3 className={`text-2xl font-bold mt-1 ${textColor}`}>
+  <div className={`p-4 md:p-5 rounded-xl border shadow-sm flex items-center justify-between ${color}`}>
+    <div className="min-w-0">
+      <p className={`text-[10px] md:text-xs font-bold uppercase tracking-wide opacity-80 ${textColor}`}>{title}</p>
+      <h3 className={`text-lg md:text-2xl font-black mt-1 truncate ${textColor}`}>
         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)}
       </h3>
     </div>
-    <div className={`p-3 rounded-full bg-white bg-opacity-60 shadow-sm`}>{icon}</div>
+    <div className="p-2 md:p-3 rounded-full bg-white bg-opacity-60 shadow-sm shrink-0 ml-2">{icon}</div>
+  </div>
+);
+
+// Componente corrigido para aceitar contextos de Tabela ou Div
+const NoData = ({ colSpan, isTable = false }: { colSpan?: number, isTable?: boolean }) => {
+  const content = (
+    <div className="px-6 py-12 text-center text-gray-400 bg-gray-50/50 flex flex-col items-center justify-center gap-2 w-full">
+      <Filter size={32} className="opacity-20" />
+      <p className="text-sm">Nenhuma despesa encontrada.</p>
+    </div>
+  );
+
+  if (isTable) {
+    return (
+      <tr>
+        <td colSpan={colSpan}>{content}</td>
+      </tr>
+    );
+  }
+
+  return content;
+};
+
+const FeedbackModal = ({ type, title, desc, btnText, btnColor, onClose }: any) => (
+  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
+    <div className="bg-white rounded-2xl shadow-xl p-6 text-center w-full max-w-sm animate-in zoom-in-95">
+      <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${type === 'success' ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600'}`}>
+        {type === 'success' ? <CheckCircle2 size={32} /> : <AlertTriangle size={32} />}
+      </div>
+      <h3 className="text-xl font-bold mb-2 text-gray-800">{title}</h3>
+      <p className="text-sm text-gray-600 mb-6">{desc}</p>
+      <button onClick={onClose} className={`w-full ${btnColor} text-white py-3 rounded-xl font-bold shadow-lg transition-all active:scale-95`}>{btnText}</button>
+    </div>
   </div>
 );

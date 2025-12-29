@@ -157,17 +157,18 @@ const Sidebar = ({ open, setOpen }) => {
 
   return (
     <>
-      {/* BOTÃO FLUTUANTE MOBILE */}
-      {mounted && !open && createPortal(
-        <button
-          onClick={() => setOpen(true)}
-          style={{ zIndex: 2147483647 }}
-          className="md:hidden fixed top-4 left-4 p-2 bg-[#00254d] text-white rounded-md shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:bg-[#001a35] transition-all border border-white/20"
-        >
-          <FaBars size={24} />
-        </button>,
-        document.body
-      )}
+    {/* BOTÃO FLUTUANTE MOBILE */}
+    {mounted && createPortal(
+      <button
+        onClick={() => setOpen(!open)} // Inverte o estado ao clicar
+        style={{ zIndex: 2147483647 }}
+        className="md:hidden fixed top-4 left-4 p-2 bg-[#00254d] text-white rounded-md shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:bg-[#001a35] transition-all border border-white/20"
+      >
+        {/* Alterna o ícone se estiver aberto ou fechado, ou mantém apenas o FaBars se preferir */}
+        {open ? <FaXmark size={24} /> : <FaBars size={24} />}
+      </button>,
+      document.body
+    )}
 
       {/* OVERLAY MOBILE */}
       <div

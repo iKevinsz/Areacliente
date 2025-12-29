@@ -2,24 +2,21 @@
 
 import React, { useState } from "react";
 import { 
-  Database, 
   Save, 
   Search, 
-  Download, 
   Server, 
   CheckCircle2, 
   Loader2,
-  X // Importei o X para fechar caso queira
+  X,
+  Database,
+  ChevronRight
 } from "lucide-react";
 
 export default function BackupPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [servidor, setServidor] = useState("KEVIN");
-  
-  // Estado para controlar a visibilidade do Modal
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-  // Dados baseados na imagem image_2da078.png
   const backups = [
     { id: 1, data: "13/03/2025", sistema: "DATACAIXA", tamanho: 11, situacao: "Finalizado" },
     { id: 2, data: "01/11/2023", sistema: "DATACAIXA", tamanho: 1, situacao: "Finalizado" },
@@ -32,10 +29,8 @@ export default function BackupPage() {
 
   const handleSave = () => {
     setIsSaving(true);
-    // Simula o tempo de salvamento
     setTimeout(() => {
       setIsSaving(false);
-      // Abre o modal de sucesso
       setShowSuccessModal(true);
     }, 1000);
   };
@@ -43,76 +38,96 @@ export default function BackupPage() {
   return (
     <div className="p-4 md:p-8 bg-gray-50 min-h-screen font-sans text-gray-800">
       
-      {/* TÍTULO DA PÁGINA */}
+      {/* HEADER DA PÁGINA */}
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-gray-600 flex items-center gap-2">
-          Sistema / <span className="text-gray-900 font-bold tracking-tight">Backups</span>
+        <h1 className="text-xl md:text-2xl font-black text-gray-900 flex items-center gap-3">
+           <Database className="text-blue-600 shrink-0" /> Sistema / Backups
         </h1>
+        <p className="text-gray-500 text-xs md:text-sm mt-1 uppercase font-bold tracking-tighter">Histórico de cópias de segurança</p>
       </div>
 
-      <div className="max-w-[1600px] mx-auto space-y-4">
+      <div className="max-w-6xl mx-auto space-y-4 md:space-y-6">
         
-        {/* CONFIGURAÇÃO DO SERVIDOR */}
-        <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">
-            Servidor
+        {/* CONFIGURAÇÃO DO SERVIDOR RESPONSIVA */}
+        <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm">
+          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-3">
+            Identificação do Servidor
           </label>
-          <div className="flex items-center gap-3">
-            <div className="relative w-full max-w-md">
-              <Server className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+          <div className="flex flex-col sm:flex-row items-stretch gap-3">
+            <div className="relative flex-1">
+              <Server className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
               <input 
                 type="text" 
                 value={servidor}
                 onChange={(e) => setServidor(e.target.value.toUpperCase())}
-                className="w-full bg-white border border-gray-200 rounded-lg pl-10 pr-4 py-2 text-sm outline-none focus:border-blue-500 font-medium"
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-10 pr-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-500 font-bold text-gray-700"
               />
             </div>
             <button 
               onClick={handleSave}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold text-sm flex items-center gap-2 transition-all active:scale-95 cursor-pointer"
+              disabled={isSaving}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-blue-100 disabled:opacity-50"
             >
               {isSaving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
-              Salvar
+              SALVAR CONFIGURAÇÃO
             </button>
           </div>
         </div>
 
-        {/* TABELA DE REGISTROS */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <h2 className="font-bold text-gray-700">Lista de Backups</h2>
+        {/* LISTAGEM DE BACKUPS */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="p-4 md:p-6 border-b border-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <h2 className="font-black text-gray-800 uppercase text-xs tracking-tighter">Registros Recentes</h2>
             
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
-                <input 
-                  type="text"
-                  placeholder="Pesquisar..."
-                  className="pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-blue-500 w-full md:w-64"
-                />
-              </div>
+            <div className="relative w-full md:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+              <input 
+                type="text"
+                placeholder="Pesquisar data ou sistema..."
+                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              />
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* VIEW MOBILE (CARDS) */}
+          <div className="md:hidden divide-y divide-gray-100">
+            {backups.map((b) => (
+              <div key={b.id} className="p-4 flex items-center justify-between gap-3 active:bg-gray-50 transition-colors">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[10px] font-black text-blue-600">#{b.id}</span>
+                    <h4 className="font-black text-gray-800 text-sm truncate">{b.data}</h4>
+                  </div>
+                  <p className="text-[10px] text-gray-500 uppercase font-medium">{b.sistema} • {b.tamanho} MB</p>
+                  <div className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-green-50 text-green-700 text-[9px] font-black uppercase">
+                    <CheckCircle2 size={10} /> {b.situacao}
+                  </div>
+                </div>
+                <ChevronRight size={18} className="text-gray-300 shrink-0" />
+              </div>
+            ))}
+          </div>
+
+          {/* VIEW DESKTOP (TABELA) */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left">
               <thead>
-                <tr className="bg-[#414d5f] text-white text-[10px] font-bold uppercase tracking-wider">
-                  <th className="px-6 py-4">Data</th>
-                  <th className="px-6 py-4">Sistema</th>
-                  <th className="px-6 py-4 text-center">Tamanho (MB)</th>
-                  <th className="px-6 py-4 text-center">Situação</th>
+                <tr className="bg-[#414d5f] text-white text-[10px] font-black uppercase tracking-widest">
+                  <th className="px-6 py-5">Data da Cópia</th>
+                  <th className="px-6 py-5">Sistema de Origem</th>
+                  <th className="px-6 py-5 text-center">Tamanho</th>
+                  <th className="px-6 py-5 text-center">Situação</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {backups.map((b) => (
-                  <tr key={b.id} className="text-sm hover:bg-gray-50/80 transition-colors">
-                    <td className="px-6 py-4 text-gray-600">{b.data}</td>
-                    <td className="px-6 py-4 font-bold text-gray-700">{b.sistema}</td>
-                    <td className="px-6 py-4 text-center text-gray-600 font-mono">{b.tamanho}</td>
-                    <td className="px-6 py-4 text-center">
-                      <span className="inline-flex items-center gap-1.5 text-gray-600 font-medium">
-                        <CheckCircle2 size={14} className="text-green-500" />
+                  <tr key={b.id} className="text-sm hover:bg-blue-50/30 transition-colors group">
+                    <td className="px-6 py-5 text-gray-600 font-medium">{b.data}</td>
+                    <td className="px-6 py-5 font-black text-gray-700">{b.sistema}</td>
+                    <td className="px-6 py-5 text-center text-gray-600 font-mono text-xs">{b.tamanho} MB</td>
+                    <td className="px-6 py-5 text-center">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-50 text-green-700 border border-green-100 text-xs font-bold transition-all group-hover:scale-105">
+                        <CheckCircle2 size={14} />
                         {b.situacao}
                       </span>
                     </td>
@@ -122,57 +137,52 @@ export default function BackupPage() {
             </table>
           </div>
 
-          {/* RODAPÉ DA TABELA */}
-          <div className="p-6 bg-gray-50/30 border-t border-gray-100 flex justify-between items-center text-xs text-gray-400 font-medium">
-            <span>Mostrando 1 até {backups.length} de {backups.length} registros</span>
-            <div className="flex items-center gap-1">
-               <button className="px-3 py-1 border border-gray-200 rounded bg-white hover:bg-gray-50 cursor-not-allowed">Anterior</button>
-               <button className="px-3 py-1 bg-blue-600 text-white rounded font-bold shadow-sm">1</button>
-               <button className="px-3 py-1 border border-gray-200 rounded bg-white hover:bg-gray-50 cursor-not-allowed">Próximo</button>
+          {/* RODAPÉ DA LISTA */}
+          <div className="p-4 md:p-6 bg-gray-50/50 border-t border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] md:text-xs text-gray-400 font-bold uppercase tracking-widest">
+            <span className="text-center sm:text-left">Exibindo {backups.length} registros salvos em nuvem</span>
+            <div className="flex items-center gap-2">
+               <button className="px-4 py-2 border border-gray-200 rounded-xl bg-white opacity-50 cursor-not-allowed">Anterior</button>
+               <button className="px-4 py-2 bg-blue-600 text-white rounded-xl shadow-md">1</button>
+               <button className="px-4 py-2 border border-gray-200 rounded-xl bg-white opacity-50 cursor-not-allowed">Próximo</button>
             </div>
           </div>
         </div>
-
       </div>
 
-      {/* --- MODAL DE SUCESSO --- */}
+      {/* MODAL DE SUCESSO CENTRALIZADO (ESTILO APP) */}
       {showSuccessModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 relative animate-in zoom-in-95 duration-300">
-            
-            {/* Botão Fechar (X) */}
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setShowSuccessModal(false)}>
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 relative animate-in zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
             <button 
               onClick={() => setShowSuccessModal(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+              className="absolute top-4 right-4 p-2 bg-gray-50 text-gray-400 hover:text-gray-600 rounded-full transition-colors"
             >
-              <X size={20} />
+              <X size={18} />
             </button>
 
-            {/* Conteúdo do Modal */}
             <div className="flex flex-col items-center text-center">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                <CheckCircle2 className="text-green-600 w-8 h-8" />
+              <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mb-6 shadow-inner">
+                <CheckCircle2 className="text-green-500 w-10 h-10" />
               </div>
               
-              <h3 className="text-xl font-bold text-gray-900 mb-2">
-                Sucesso!
+              <h3 className="text-xl font-black text-gray-900 mb-2 uppercase tracking-tighter">
+                Configurado!
               </h3>
               
-              <p className="text-sm text-gray-500 mb-6 leading-relaxed">
-                As configurações do servidor de backup foram atualizadas corretamente.
+              <p className="text-sm text-gray-500 mb-8 leading-relaxed font-medium">
+                O servidor de backup foi atualizado. Suas próximas cópias serão direcionadas para <span className="text-blue-600 font-black">{servidor}</span>.
               </p>
 
               <button 
                 onClick={() => setShowSuccessModal(false)}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-blue-100 active:scale-95"
+                className="w-full bg-gray-900 hover:bg-black text-white font-black text-xs py-4 rounded-2xl transition-all shadow-xl shadow-gray-200 active:scale-95 uppercase tracking-widest"
               >
-                Entendido
+                ENTENDIDO
               </button>
             </div>
           </div>
         </div>
       )}
-
     </div>
   );
 }

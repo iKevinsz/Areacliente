@@ -54,18 +54,6 @@ const MOCK_VENDAS: Venda[] = [
     id: '#5022', cliente: 'Juliana Leme', telefone: '(11) 95555-4444',
     data: '2025-12-27T13:30:00', tipo: 'retirada', status: 'entregue', total: 30.00, formaPagamento: 'Pix',
     itens: [{ qtd: 1, nome: 'Açaí 500ml', preco: 30.0, obs: 'Com granola' }]
-  },
-  { 
-    id: '#5021', cliente: 'Ricardo Silva', telefone: '(11) 91111-2222',
-    data: '2025-12-27T12:00:00', tipo: 'delivery', status: 'cancelado', total: 120.00, 
-    formaPagamento: 'Cartão Débito', motivoCancelamento: 'Cliente desistiu da compra',
-    itens: [{ qtd: 3, nome: 'Marmitex Executiva', preco: 40.0 }]
-  },
-  { 
-    id: '#5020', cliente: 'Beatriz Costa', telefone: '(11) 92222-3333',
-    endereco: 'Rua Augusta, 900', data: '2025-12-27T11:45:00', 
-    tipo: 'delivery', status: 'pendente', total: 55.00, formaPagamento: 'Pix',
-    itens: [{ qtd: 1, nome: 'Temaki Salmão G', preco: 35.0 }, { qtd: 1, nome: 'Hot Roll 10un', preco: 20.0 }]
   }
 ];
 
@@ -77,8 +65,6 @@ export default function VendasCardapioPage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [selectedVenda, setSelectedVenda] = useState<Venda | null>(null);
-  const [isCancelling, setIsCancelling] = useState(false);
-  const [cancelReason, setCancelReason] = useState('');
 
   useEffect(() => {
     setMounted(true);
@@ -89,8 +75,6 @@ export default function VendasCardapioPage() {
   const atualizarStatus = (id: string, novoStatus: StatusPedido, motivo?: string) => {
     setVendas(prev => prev.map(v => v.id === id ? { ...v, status: novoStatus, motivoCancelamento: motivo } : v));
     setSelectedVenda(null);
-    setIsCancelling(false);
-    setCancelReason('');
   };
 
   const filteredVendas = vendas.filter(venda => {
@@ -115,179 +99,187 @@ export default function VendasCardapioPage() {
   };
 
   const getStatusBadge = (status: StatusPedido) => {
-    switch (status) {
-      case 'pendente': return <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-md text-xs font-bold flex items-center gap-1"><Clock size={12}/> Pendente</span>;
-      case 'preparando': return <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-xs font-bold flex items-center gap-1"><ChefHat size={12}/> Preparando</span>;
-      case 'saiu_entrega': return <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded-md text-xs font-bold flex items-center gap-1"><Bike size={12}/> Em Entrega</span>;
-      case 'entregue': return <span className="px-2 py-1 bg-green-100 text-green-700 rounded-md text-xs font-bold flex items-center gap-1"><CheckCircle size={12}/> Entregue</span>;
-      case 'cancelado': return <span className="px-2 py-1 bg-red-100 text-red-700 rounded-md text-xs font-bold flex items-center gap-1"><XCircle size={12}/> Cancelado</span>;
-      default: return null;
-    }
+    const badges = {
+      pendente: "bg-yellow-100 text-yellow-700",
+      preparando: "bg-blue-100 text-blue-700",
+      saiu_entrega: "bg-orange-100 text-orange-700",
+      entregue: "bg-green-100 text-green-700",
+      cancelado: "bg-red-100 text-red-700",
+    };
+    return (
+      <span className={`px-2 py-1 rounded-md text-[10px] md:text-xs font-bold flex items-center gap-1 shrink-0 ${badges[status]}`}>
+        {status === 'saiu_entrega' ? 'Saiu p/ Entrega' : status.charAt(0).toUpperCase() + status.slice(1)}
+      </span>
+    );
   };
 
-  if (!mounted) return <div className="min-h-screen bg-gray-50 p-6">Carregando painel...</div>;
+  if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-6 space-y-6">
+    <div className="min-h-screen bg-gray-50 p-3 md:p-6 space-y-4">
       {/* HEADER */}
       <div className="print:hidden">
-          <h2 className="text-sm font-medium text-gray-400">Cardápio Digital</h2>
-          <h1 className="text-2xl font-bold text-gray-800">Painel de Vendas</h1>
+          <h2 className="text-xs font-medium text-gray-400 uppercase tracking-tighter">Cardápio Digital</h2>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-800">Painel de Vendas</h1>
       </div>
 
-      {/* KPIS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 print:hidden">
-        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
-            <div><p className="text-xs font-bold uppercase text-gray-400">Total Hoje</p><h3 className="text-2xl font-bold" suppressHydrationWarning>{formatCurrency(totalHoje)}</h3></div>
-            <div className="p-3 bg-green-50 text-green-600 rounded-full"><ShoppingBag size={24}/></div>
+      {/* KPIS (Total Hoje e Novos) */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 print:hidden">
+        <div className="bg-white p-3 md:p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
+            <div className="overflow-hidden">
+              <p className="text-[10px] font-bold uppercase text-gray-400 truncate">Total Hoje</p>
+              <h3 className="text-base md:text-2xl font-bold truncate">{formatCurrency(totalHoje)}</h3>
+            </div>
+            <div className="p-2 bg-green-50 text-green-600 rounded-full hidden sm:block">
+              <ShoppingBag size={20}/>
+            </div>
         </div>
-        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
-            <div><p className="text-xs font-bold uppercase text-gray-400">Novos Pedidos</p><h3 className="text-2xl font-bold text-yellow-600">{pendentes}</h3></div>
-            <div className="p-3 bg-yellow-50 text-yellow-600 rounded-full animate-pulse"><Clock size={24}/></div>
+        <div className="bg-white p-3 md:p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold uppercase text-gray-400">Novos</p>
+              <h3 className="text-base md:text-2xl font-bold text-yellow-600">{pendentes}</h3>
+            </div>
+            <div className="p-2 bg-yellow-50 text-yellow-600 rounded-full animate-pulse hidden sm:block">
+              <Clock size={20}/>
+            </div>
         </div>
       </div>
 
-      {/* FILTROS */}
-      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-4 print:hidden">
-        <div className="flex flex-col lg:flex-row gap-4 justify-between">
-            <div className="relative w-full lg:w-96">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                <input type="text" placeholder="Buscar cliente ou ID..." className="w-full pl-10 pr-4 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-            </div>
-            <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-lg border">
-                <Calendar size={14} className="text-gray-400"/>
-                <input type="date" className="bg-white border text-xs rounded px-2 py-1.5 cursor-pointer outline-none" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-                <span className="text-gray-400 text-xs">até</span>
-                <input type="date" className="bg-white border text-xs rounded px-2 py-1.5 cursor-pointer outline-none" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-            </div>
-        </div>
-
-        <div className="flex overflow-x-auto pb-1 gap-2 border-b">
-            {['todos', 'pendente', 'preparando', 'saiu_entrega', 'entregue', 'cancelado'].map((tab) => (
-                <button key={tab} onClick={() => setStatusFilter(tab)} className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors border-b-2 cursor-pointer whitespace-nowrap ${statusFilter === tab ? 'text-blue-600 border-blue-600 bg-blue-50/50' : 'text-gray-500 border-transparent hover:text-gray-700'}`}>
-                  {tab === 'todos' ? 'Todos' : tab === 'saiu_entrega' ? 'Em Entrega' : tab.charAt(0).toUpperCase() + tab.slice(1)}
-                </button>
+      {/* FILTROS - Busca à direita */}
+      <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm space-y-4 print:hidden">
+        <div className="flex flex-col-reverse md:flex-row-reverse gap-3 items-center justify-between">
+          {/* Busca à Direita */}
+          <div className="relative w-full md:w-80">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+            <input 
+              type="text" 
+              placeholder="Buscar cliente..." 
+              className="w-full pl-10 pr-4 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" 
+              value={searchTerm} 
+              onChange={(e) => setSearchTerm(e.target.value)} 
+            />
+          </div>
+          
+          {/* Tabs à Esquerda */}
+          <div className="flex overflow-x-auto no-scrollbar gap-2 border-b md:border-none pb-2 md:pb-0 w-full md:w-auto">
+            {['todos', 'pendente', 'preparando', 'saiu_entrega', 'entregue'].map((tab) => (
+              <button 
+                key={tab} 
+                onClick={() => setStatusFilter(tab)} 
+                className={`px-3 py-2 text-xs font-medium transition-colors border-b-2 whitespace-nowrap ${statusFilter === tab ? 'text-blue-600 border-blue-600' : 'text-gray-400 border-transparent'}`}
+              >
+                {tab === 'saiu_entrega' ? 'SAIU P/ ENTREGA' : tab.toUpperCase()}
+              </button>
             ))}
+          </div>
         </div>
       </div>
 
-      {/* TABELA */}
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden print:hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Pedido / Cliente</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Data</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase text-center">Status</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filteredVendas.map((venda) => (
-                  <tr key={venda.id} className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => setSelectedVenda(venda)}>
-                      <td className="px-6 py-4">
-                        <p className="text-sm font-bold text-gray-800">{venda.id}</p>
-                        <p className="text-sm text-gray-500">{venda.cliente}</p>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500" suppressHydrationWarning>{formatDate(venda.data)}</td>
-                      <td className="px-6 py-4 flex justify-center">{getStatusBadge(venda.status)}</td>
-                      <td className="px-6 py-4 text-right"><Eye size={18} className="text-gray-400 inline"/></td>
-                  </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {/* LISTAGEM */}
+      <div className="space-y-3">
+        {filteredVendas.map((venda) => (
+          <div 
+            key={venda.id} 
+            onClick={() => setSelectedVenda(venda)} 
+            className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm active:scale-[0.98] transition-transform cursor-pointer"
+          >
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-[10px] font-bold text-blue-600">{venda.id}</span>
+              {getStatusBadge(venda.status)}
+            </div>
+            <h4 className="font-bold text-gray-800 text-sm mb-1 truncate">{venda.cliente}</h4>
+            <div className="flex justify-between items-center text-[11px] text-gray-500">
+              <span className="truncate">{venda.tipo.toUpperCase()} • {formatCurrency(venda.total)}</span>
+              <span>{venda.data.split('T')[1].substring(0,5)}</span>
+            </div>
+          </div>
+        ))}
       </div>
 
-      {/* MODAL / CUPOM DE IMPRESSÃO */}
+      {/* MODAL CENTRALIZADO */}
       {selectedVenda && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto print:p-0 print:static print:bg-white">
-            <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col my-auto animate-in zoom-in-95 print:shadow-none print:max-w-full print:rounded-none">
-                
-                {/* Header Modal */}
-                <div className="bg-gray-50 px-6 py-4 border-b flex justify-between items-center print:hidden">
-                    <div><h2 className="text-lg font-bold">Pedido {selectedVenda.id}</h2><p className="text-xs text-gray-400" suppressHydrationWarning>{formatDate(selectedVenda.data)}</p></div>
-                    <button onClick={() => {setSelectedVenda(null); setIsCancelling(false);}} className="text-gray-400 hover:text-gray-600 cursor-pointer"><X size={24} /></button>
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300">
+            <div className="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-2xl shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-600 text-white rounded-lg"><ShoppingBag size={20}/></div>
+                <div className="min-w-0">
+                  <h2 className="font-bold text-gray-800 text-sm md:text-base truncate">Pedido {selectedVenda.id}</h2>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-tighter">{selectedVenda.tipo}</p>
                 </div>
+              </div>
+              <button onClick={() => setSelectedVenda(null)} className="p-2 text-gray-400 hover:bg-gray-100 rounded-full transition-colors"><X size={24}/></button>
+            </div>
 
-                {/* Conteúdo do Pedido */}
-                <div className="p-6 space-y-5 overflow-y-auto max-h-[70vh] print:max-h-full print:p-0">
-                    <div className="hidden print:block text-center border-b pb-4 mb-4">
-                        <h2 className="text-xl font-bold uppercase">Cupom de Pedido</h2>
-                        <p className="text-sm">Datacaixa Tecnologia</p>
-                        <p className="text-xs" suppressHydrationWarning>{formatDate(selectedVenda.data)}</p>
-                    </div>
+            <div className="p-4 md:p-6 overflow-y-auto space-y-6 flex-1">
+              <div className="space-y-1">
+                <h3 className="font-bold text-gray-800">{selectedVenda.cliente}</h3>
+                <p className="text-sm text-gray-500 flex items-center gap-1 font-medium"><Phone size={14}/> {selectedVenda.telefone}</p>
+                {selectedVenda.endereco && <p className="text-sm text-gray-500 flex items-start gap-1"><MapPin size={14} className="mt-1 shrink-0"/> {selectedVenda.endereco}</p>}
+              </div>
 
-                    <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border print:hidden">
-                        <div><p className="text-[10px] font-bold text-gray-400 uppercase">Status</p><div>{getStatusBadge(selectedVenda.status)}</div></div>
-                        <div className="text-right"><p className="text-[10px] font-bold text-gray-400 uppercase">Tipo</p><span className="text-sm font-bold flex items-center gap-1">{selectedVenda.tipo === 'delivery' ? <Bike size={14}/> : <Store size={14}/>} {selectedVenda.tipo.toUpperCase()}</span></div>
-                    </div>
-
-                    <div className="text-sm space-y-1">
-                        <p className="font-bold text-gray-800 text-base">{selectedVenda.cliente}</p>
-                        <p className="text-gray-600 flex items-center gap-1 font-medium"><Phone size={12}/> {selectedVenda.telefone}</p>
-                        {selectedVenda.tipo === 'delivery' && <p className="text-gray-500 flex items-start gap-1"><MapPin size={12} className="mt-1 shrink-0"/> {selectedVenda.endereco}</p>}
-                    </div>
-
-                    <div className="border-t pt-4">
-                        <p className="text-[10px] font-bold text-gray-400 uppercase mb-3 tracking-widest">Resumo do Pedido</p>
-                        <ul className="space-y-3">
-                            {selectedVenda.itens.map((item, i) => (
-                                <li key={i} className="flex justify-between text-sm">
-                                    <div className="flex gap-2">
-                                      <span className="font-bold text-blue-600">{item.qtd}x</span>
-                                      <div><p className="font-medium text-gray-800">{item.nome}</p>{item.obs && <span className="text-red-500 italic text-xs">Obs: {item.obs}</span>}</div>
-                                    </div>
-                                    <span className="font-bold text-gray-700" suppressHydrationWarning>{formatCurrency(item.preco * item.qtd)}</span>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-
-                    <div className="border-t border-dashed pt-4 flex justify-between font-bold text-xl text-gray-900">
-                      <span className="text-sm text-gray-400 font-normal self-end">Pagamento: {selectedVenda.formaPagamento}</span>
-                      <div className="text-right"><p className="text-xs font-normal text-gray-400">Total</p><span suppressHydrationWarning>{formatCurrency(selectedVenda.total)}</span></div>
-                    </div>
-
-                    {selectedVenda.status === 'cancelado' && selectedVenda.motivoCancelamento && (
-                      <div className="bg-red-50 p-3 rounded-lg border border-red-100 flex gap-2 print:border-black">
-                        <AlertTriangle size={16} className="text-red-600 shrink-0 print:hidden"/>
-                        <div><p className="text-xs font-bold text-red-600 uppercase">Motivo do Cancelamento</p><p className="text-sm text-red-700">{selectedVenda.motivoCancelamento}</p></div>
-                      </div>
-                    )}
-
-                    {isCancelling && (
-                      <div className="bg-gray-50 p-4 rounded-xl border-2 border-red-100 animate-in slide-in-from-top-2 print:hidden">
-                        <label className="text-xs font-bold text-gray-600 block mb-2">JUSTIFICATIVA</label>
-                        <textarea className="w-full p-3 text-sm border rounded-lg outline-none focus:ring-2 focus:ring-red-200" rows={2} placeholder="Motivo..." value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} />
-                        <div className="flex gap-2 mt-3">
-                          <button onClick={() => atualizarStatus(selectedVenda.id, 'cancelado', cancelReason)} disabled={!cancelReason} className="flex-1 bg-red-600 text-white text-xs font-bold py-2 rounded-lg cursor-pointer">Confirmar</button>
-                          <button onClick={() => setIsCancelling(false)} className="px-4 py-2 text-xs font-bold text-gray-500 cursor-pointer">Desistir</button>
+              <div className="border-t pt-4">
+                <p className="text-[10px] font-bold text-gray-400 uppercase mb-3 tracking-widest">Resumo do Pedido</p>
+                <div className="space-y-3">
+                  {selectedVenda.itens.map((item, i) => (
+                    <div key={i} className="flex justify-between text-sm gap-2">
+                      <div className="flex gap-2 min-w-0">
+                        <span className="font-bold text-blue-600 shrink-0">{item.qtd}x</span>
+                        <div className="min-w-0">
+                          <p className="font-medium text-gray-800 truncate">{item.nome}</p>
+                          {item.obs && <p className="text-red-500 text-[11px] italic leading-tight">Obs: {item.obs}</p>}
                         </div>
                       </div>
-                    )}
+                      <span className="font-bold text-gray-600 shrink-0">{formatCurrency(item.preco * item.qtd)}</span>
+                    </div>
+                  ))}
                 </div>
+              </div>
 
-                {/* Ações Modal */}
-                <div className="bg-gray-50 px-6 py-4 flex flex-wrap gap-2 print:hidden">
-                    <button onClick={handlePrint} className="flex-1 min-w-[120px] py-2 border bg-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 cursor-pointer hover:bg-gray-50"><Printer size={16}/> Imprimir</button>
-                    {!isCancelling && selectedVenda.status !== 'cancelado' && selectedVenda.status !== 'entregue' && (
-                      <button onClick={() => setIsCancelling(true)} className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg text-sm font-bold cursor-pointer transition-colors">Cancelar</button>
-                    )}
+              <div className="border-t border-dashed pt-4 flex justify-between items-end gap-2 shrink-0">
+                <div className="min-w-0">
+                  <p className="text-[10px] text-gray-400 uppercase font-medium">Pagamento</p>
+                  <p className="text-sm font-bold text-gray-700 truncate uppercase">{selectedVenda.formaPagamento}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-[10px] text-gray-400 uppercase font-medium">Total</p>
+                  <p className="text-xl font-black text-gray-900 leading-none">{formatCurrency(selectedVenda.total)}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-gray-50 border-t shrink-0 rounded-b-2xl">
+              <div className="flex flex-col gap-2">
+                <div className="flex gap-2">
+                    <button onClick={handlePrint} className="flex-1 py-3 border bg-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 active:bg-gray-100 transition-colors">
+                        <Printer size={16}/> Imprimir
+                    </button>
                     {selectedVenda.status === 'pendente' && (
-                        <button onClick={() => atualizarStatus(selectedVenda.id, 'preparando')} className="flex-[2] py-2 bg-blue-600 text-white rounded-lg text-sm font-bold cursor-pointer hover:bg-blue-700">Aceitar Pedido</button>
+                        <button onClick={() => atualizarStatus(selectedVenda.id, 'preparando')} className="flex-[2] py-3 bg-blue-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-200 active:bg-blue-700 transition-colors">
+                            Aceitar Pedido
+                        </button>
                     )}
-                    {selectedVenda.status === 'preparando' && selectedVenda.tipo === 'delivery' && (
-                        <button onClick={() => atualizarStatus(selectedVenda.id, 'saiu_entrega')} className="flex-[2] py-2 bg-orange-600 text-white rounded-lg text-sm font-bold cursor-pointer hover:bg-orange-700">Despachar Entrega</button>
+                    {selectedVenda.status === 'preparando' && (
+                        <button onClick={() => atualizarStatus(selectedVenda.id, selectedVenda.tipo === 'delivery' ? 'saiu_entrega' : 'entregue')} className="flex-[2] py-3 bg-orange-600 text-white rounded-xl text-sm font-bold active:bg-orange-700 transition-colors">
+                            Pronto / Despachar
+                        </button>
                     )}
-                    {(selectedVenda.status === 'saiu_entrega' || (selectedVenda.status === 'preparando' && selectedVenda.tipo === 'retirada')) && (
-                        <button onClick={() => atualizarStatus(selectedVenda.id, 'entregue')} className="flex-[2] py-2 bg-green-600 text-white rounded-lg text-sm font-bold cursor-pointer hover:bg-green-700">Finalizar Pedido</button>
+                    {selectedVenda.status === 'saiu_entrega' && (
+                        <button onClick={() => atualizarStatus(selectedVenda.id, 'entregue')} className="flex-[2] py-3 bg-green-600 text-white rounded-xl text-sm font-bold active:bg-green-700 transition-colors">
+                            Finalizar
+                        </button>
                     )}
                 </div>
+              </div>
             </div>
+          </div>
         </div>
       )}
+
+      <style jsx global>{`
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
     </div>
   );
 }
