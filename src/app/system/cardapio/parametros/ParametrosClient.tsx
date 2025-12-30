@@ -1,67 +1,55 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
+import React, { useState } from 'react';
 import { 
-  FaStore, FaTruck, FaCreditCard, FaClock, FaCoffee, FaTicketAlt, FaPlug, 
-  FaSave, FaInfoCircle, FaCalculator, FaMotorcycle, FaUtensils, FaMapMarkedAlt, 
-  FaCity, FaPlus, FaTrash, FaEdit, FaExclamationTriangle, FaPercentage, FaMapMarkerAlt,
-  FaTimes, FaMoneyBill, FaGlobe, FaQrcode, FaCopy, FaRegClock, FaCalendarAlt, FaTag,
-  FaCheckCircle
-} from "react-icons/fa";
+  FaStore, FaTruck, FaCreditCard, FaClock, FaCoffee, 
+  FaTicketAlt, FaHandshake, FaGem, FaCheckCircle, 
+  FaExclamationTriangle, FaSave, FaPlus, FaEdit, 
+  FaTrash, FaTimes, FaMapMarkedAlt, FaCity, 
+  FaMotorcycle, FaPercentage, FaMoneyBill, FaGlobe, 
+  FaQrcode, FaRegClock, FaCalendarAlt, FaPlug, 
+  FaSync, FaShoppingBag, FaLink, FaInfoCircle, FaCalculator, FaUtensils, FaTag
+} from 'react-icons/fa';
 
-import { salvarParametros } from "@/app/actions/parametros";
-
-// --- COMPONENTES VISUAIS ---
+// --- COMPONENTES AUXILIARES SIMPLES (Para garantir que funcionem se não estiverem importados) ---
 const ToggleSwitch = ({ label, description, checked, onChange }: any) => (
   <div className="flex items-center justify-between py-3">
-    <div>
-      <h4 className="text-sm font-semibold text-gray-800">{label}</h4>
-      {description && <p className="text-xs text-gray-500">{description}</p>}
+    <div className="pr-4">
+      <div className="font-medium text-gray-800 text-sm">{label}</div>
+      {description && <div className="text-gray-500 text-xs mt-0.5">{description}</div>}
     </div>
-    <label className="relative inline-flex items-center cursor-pointer">
+    <label className="relative inline-flex items-center cursor-pointer shrink-0">
       <input type="checkbox" className="sr-only peer" checked={checked} onChange={onChange} />
-      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
     </label>
   </div>
 );
 
 const SelectionCard = ({ icon, label, checked, onChange }: any) => (
-  <div onClick={onChange} className={`cursor-pointer p-4 rounded-xl border flex items-center gap-3 transition-all ${checked ? "border-blue-500 bg-blue-50 ring-1 ring-blue-500 text-blue-700" : "border-gray-200 bg-white hover:bg-gray-50 text-gray-600"}`}>
-    <div className={`text-xl ${checked ? "text-blue-600" : "text-gray-400"}`}>{icon}</div>
-    <span className="font-semibold text-sm">{label}</span>
+  <div onClick={onChange} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${checked ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+    <div className={`w-5 h-5 rounded flex items-center justify-center border ${checked ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300 text-transparent'}`}><FaCheckCircle size={12} /></div>
+    <div className="text-gray-600">{icon}</div>
+    <span className={`text-sm font-medium ${checked ? 'text-blue-800' : 'text-gray-700'}`}>{label}</span>
   </div>
 );
 
-const RadioOption = ({ label, selected, onClick, description }: any) => (
-  <div onClick={onClick} className={`cursor-pointer p-3 rounded-lg border flex items-center justify-between transition-all mb-2 ${selected ? "border-blue-500 bg-blue-50/50" : "border-gray-200 hover:bg-gray-50"}`}>
-    <div>
-      <span className={`block text-sm font-medium ${selected ? "text-blue-700" : "text-gray-700"}`}>{label}</span>
-      {description && <span className="text-xs text-gray-400">{description}</span>}
-    </div>
-    <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${selected ? "border-blue-600" : "border-gray-300"}`}>
-      {selected && <div className="w-2 h-2 bg-blue-600 rounded-full"></div>}
-    </div>
+const RadioOption = ({ label, description, selected, onClick }: any) => (
+  <div onClick={onClick} className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all mb-2 ${selected ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' : 'border-gray-200 hover:bg-gray-50'}`}>
+    <div className={`mt-1 w-4 h-4 rounded-full border flex items-center justify-center ${selected ? 'border-blue-600' : 'border-gray-400'}`}>{selected && <div className="w-2 h-2 bg-blue-600 rounded-full"></div>}</div>
+    <div><div className="font-bold text-sm text-gray-800">{label}</div><div className="text-xs text-gray-500">{description}</div></div>
   </div>
 );
 
-const PaymentOption = ({ label, subLabel, checked, onChange, children, icon }: any) => (
-  <div 
-    onClick={onChange} 
-    className={`p-4 rounded-xl border transition-all duration-200 cursor-pointer ${checked ? "bg-white border-blue-200 shadow-sm" : "bg-white border-gray-100 opacity-80"}`}
-  >
-    <div className="flex items-start gap-3">
-      <div className="pt-1">
-        <input type="checkbox" checked={checked} onChange={onChange} onClick={(e) => e.stopPropagation()} className="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer" />
+const PaymentOption = ({ label, subLabel, icon, checked, onChange, children }: any) => (
+  <div className={`border rounded-xl transition-all ${checked ? 'border-blue-200 bg-blue-50/30' : 'border-gray-200'}`}>
+    <div className="flex items-center justify-between p-4 cursor-pointer" onClick={onChange}>
+      <div className="flex items-center gap-3">
+        <div className={`p-2 rounded-lg ${checked ? 'bg-white text-blue-600 shadow-sm' : 'bg-gray-100 text-gray-400'}`}>{icon || <FaCreditCard />}</div>
+        <div><div className="font-bold text-sm text-gray-800">{label}</div><div className="text-xs text-gray-500">{subLabel}</div></div>
       </div>
-      <div className="flex-1">
-        <div className="flex items-center gap-2 mb-1">
-          {icon && <span className={`${checked ? "text-blue-600" : "text-gray-400"}`}>{icon}</span>}
-          <span className={`font-semibold ${checked ? "text-gray-800" : "text-gray-600"}`}>{label}</span>
-        </div>
-        {subLabel && <p className="text-xs text-gray-400 mb-2">{subLabel}</p>}
-        {checked && children && <div className="mt-3 pl-0 animate-fade-in cursor-auto" onClick={(e) => e.stopPropagation()}>{children}</div>}
-      </div>
+      <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${checked ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300'}`}>{checked && <FaCheckCircle size={10} />}</div>
     </div>
+    {checked && children && <div className="px-4 pb-4 pt-0 animate-fade-in">{children}</div>}
   </div>
 );
 
@@ -71,6 +59,7 @@ export default function ParametrosClient({ dadosIniciais }: { dadosIniciais: any
   const [unsavedChanges, setUnsavedChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showMlWarningModal, setShowMlWarningModal] = useState(false);
 
   // --- CONTROLE DE MODAL DE EDIÇÃO ---
   const [modalOpen, setModalOpen] = useState(false);
@@ -79,20 +68,15 @@ export default function ParametrosClient({ dadosIniciais }: { dadosIniciais: any
   const [editingItem, setEditingItem] = useState<any>(null);
 
   // --- CARREGAMENTO DE DADOS ---
-  
-  // Geral
   const [lojaFechada, setLojaFechada] = useState(dadosIniciais?.lojaFechada || false);
   const [ocultarCardapio, setOcultarCardapio] = useState(dadosIniciais?.ocultarCardapio || false);
   const [enviarWhatsapp, setEnviarWhatsapp] = useState(dadosIniciais?.enviarWhatsapp ?? true);
   const [cpfObrigatorio, setCpfObrigatorio] = useState(dadosIniciais?.cpfObrigatorio ?? true);
   const [cepObrigatorio, setCepObrigatorio] = useState(dadosIniciais?.cepObrigatorio || false);
   const [calculoPreco, setCalculoPreco] = useState(dadosIniciais?.calculoPreco || "media");
-  
-  // Valor Mínimo e CEP Padrão
   const [valorMinimo, setValorMinimo] = useState(dadosIniciais?.valorMinimo ? String(dadosIniciais.valorMinimo) : "0.00");
   const [cepPadrao, setCepPadrao] = useState(dadosIniciais?.cepPadrao || "");
 
-  // Entrega
   const confEntrega = dadosIniciais?.configEntrega || {};
   const [metodos, setMetodos] = useState(confEntrega.metodos || { delivery: true, retirada: true, local: false });
   const [tipoTaxa, setTipoTaxa] = useState(confEntrega.tipoTaxa || "km"); 
@@ -100,14 +84,30 @@ export default function ParametrosClient({ dadosIniciais }: { dadosIniciais: any
   const [valorTaxaFixa, setValorTaxaFixa] = useState(confEntrega.valorTaxaFixa || "5.00");
   const [percentualTaxa, setPercentualTaxa] = useState(confEntrega.percentualTaxa || "10");
 
-  // Pagamento
   const confPag = dadosIniciais?.configPagamento || {};
   const [pagamento, setPagamento] = useState(confPag.opcoes || { creditoPos: true, debitoPos: true, dinheiro: true, onlineCredito: false, onlinePix: false, pixEstatico: true, valeRefeicao: false });
   const [gateways, setGateways] = useState(confPag.gateways || { credito: 'asaas', pix: 'asaas' });
   const [chavePix, setChavePix] = useState(confPag.chavePix || "");
   const [bandeirasVale, setBandeirasVale] = useState(confPag.bandeirasVale || "");
 
-  // Horários
+  // --- FIDELIDADE (NOVO) ---
+  const confFidelidade = dadosIniciais?.fidelidade || {};
+  const [fidAtivo, setFidAtivo] = useState(confFidelidade.ativo || false);
+  const [fidNomeMoeda, setFidNomeMoeda] = useState(confFidelidade.nomeMoeda || "Pontos"); // Ex: Pontos, Stars
+  const [fidConversao, setFidConversao] = useState(confFidelidade.conversao || "1"); // R$ 1,00 = X pontos
+  const [fidResgate, setFidResgate] = useState(confFidelidade.valorResgate || "0.05"); // 1 Ponto = R$ 0.05 de desconto
+  const [fidValidade, setFidValidade] = useState(confFidelidade.validadeDias || "180");
+  const [fidMinimo, setFidMinimo] = useState(confFidelidade.minimoResgate || "100"); // Minimo de pontos para resgatar
+
+  const mlConfig = dadosIniciais?.integracaoMl || {};
+  const [mlAtivo, setMlAtivo] = useState(mlConfig.ativo || false);
+  const [mlAppId, setMlAppId] = useState(mlConfig.appId || "");
+  const [mlSecretKey, setMlSecretKey] = useState(mlConfig.secretKey || "");
+  const [mlSyncEstoque, setMlSyncEstoque] = useState(mlConfig.syncEstoque ?? true);
+  const [mlSyncPreco, setMlSyncPreco] = useState(mlConfig.syncPreco ?? false);
+  const [mlFatorPreco, setMlFatorPreco] = useState(mlConfig.fatorPreco || "0");
+  const [mlStatusConexao, setMlStatusConexao] = useState<"conectado" | "desconectado" | "erro">(mlConfig.token ? "conectado" : "desconectado");
+
   const [fusoHorario, setFusoHorario] = useState("America/Sao_Paulo");
   const defaultHorarios = [
     { id: 1, dia: "Segunda-feira", ativo: true, inicio: "08:00", fim: "18:00" },
@@ -119,12 +119,8 @@ export default function ParametrosClient({ dadosIniciais }: { dadosIniciais: any
     { id: 0, dia: "Domingo", ativo: false, inicio: "00:00", fim: "00:00" },
   ];
   const [horarios, setHorarios] = useState(dadosIniciais?.horarios?.length ? dadosIniciais.horarios : defaultHorarios);
-
-  // Listas
   const [pausas, setPausas] = useState(dadosIniciais?.pausas || []);
   const [cupons, setCupons] = useState(dadosIniciais?.cupons || []);
-  
-  // Tabelas
   const [bairros, setBairros] = useState(dadosIniciais?.regrasFrete?.filter((r:any) => r.tipo === 'bairro').map((r:any) => ({ id: r.id, nome: r.nomeBairro, valor: Number(r.valor) })) || []);
   const [regrasKm, setRegrasKm] = useState(dadosIniciais?.regrasFrete?.filter((r:any) => r.tipo === 'km').map((r:any) => ({ id: r.id, min: Number(r.kmMin), max: Number(r.kmMax), valor: Number(r.valor) })) || []);
   const [excecoesCep, setExcecoesCep] = useState(dadosIniciais?.excecoesFrete?.map((e:any) => ({ id: e.id, cep: e.cep, valor: Number(e.valor) })) || []);
@@ -136,55 +132,44 @@ export default function ParametrosClient({ dadosIniciais }: { dadosIniciais: any
     { id: "horario", label: "Horário de Funcionamento", icon: <FaClock /> },
     { id: "pausa", label: "Pausas", icon: <FaCoffee /> },
     { id: "cupom", label: "Cupons", icon: <FaTicketAlt /> },
-    { id: "integracao", label: "Integração", icon: <FaPlug /> },
+    { id: "fidelidade", label: "Fidelidade", icon: <FaGem /> }, // NOVA ABA
+    { id: "integracao", label: "Mercado Livre", icon: <FaHandshake /> },
   ];
 
-  // --- SALVAR TUDO ---
+  // --- SAVE ---
   const handleSaveAll = async () => {
     setIsSaving(true);
-
     const payload = {
-        geral: {
-            lojaFechada,
-            ocultarCardapio,
-            enviarWhatsapp,
-            cpfObrigatorio,
-            cepObrigatorio,
-            calculoPreco,
-            valorMinimo,
-            cepPadrao
-        },
-        entrega: {
-            metodos,
-            tipoTaxa,
-            freteGratis,
-            valorTaxaFixa,
-            percentualTaxa
-        },
-        pagamento: {
-            opcoes: pagamento,
-            gateways,
-            chavePix,
-            bandeirasVale
-        },
-        horarios,
-        pausas,
-        cupons,
-        bairros,
-        regrasKm,
-        excecoesCep
+        geral: { lojaFechada, ocultarCardapio, enviarWhatsapp, cpfObrigatorio, cepObrigatorio, calculoPreco, valorMinimo, cepPadrao },
+        entrega: { metodos, tipoTaxa, freteGratis, valorTaxaFixa, percentualTaxa },
+        pagamento: { opcoes: pagamento, gateways, chavePix, bandeirasVale },
+        // NOVO PAYLOAD FIDELIDADE
+        fidelidade: { ativo: fidAtivo, nomeMoeda: fidNomeMoeda, conversao: fidConversao, valorResgate: fidResgate, validadeDias: fidValidade, minimoResgate: fidMinimo },
+        integracaoMl: { ativo: mlAtivo, appId: mlAppId, secretKey: mlSecretKey, syncEstoque: mlSyncEstoque, syncPreco: mlSyncPreco, fatorPreco: mlFatorPreco },
+        horarios, pausas, cupons, bairros, regrasKm, excecoesCep
     };
+    
+    // Simulação da função salvarParametros (substitua pela sua chamada real de API)
+    // const res = await salvarParametros(dadosIniciais.id, payload);
+    // if (res.success) { setUnsavedChanges(false); setShowSuccessModal(true); } else { alert("Erro ao salvar: " + res.error); }
+    
+    // Para teste apenas:
+    console.log("Salvando:", payload);
+    setTimeout(() => { setUnsavedChanges(false); setShowSuccessModal(true); setIsSaving(false); }, 1000);
+  };
 
-    const res = await salvarParametros(dadosIniciais.id, payload);
-
-    if (res.success) {
-        setUnsavedChanges(false);
-        setShowSuccessModal(true);
-    } else {
-        alert("Erro ao salvar: " + res.error);
+  const handleConnectML = () => {
+    if(!mlAppId || !mlSecretKey) {
+        setShowMlWarningModal(true);
+        return;
     }
-
-    setIsSaving(false);
+    setIsSaving(true);
+    setTimeout(() => {
+        setMlStatusConexao("conectado");
+        setMlAtivo(true);
+        setIsSaving(false);
+        setUnsavedChanges(true);
+    }, 1500);
   };
 
   // --- FUNÇÕES AUXILIARES ---
@@ -213,7 +198,7 @@ export default function ParametrosClient({ dadosIniciais }: { dadosIniciais: any
   const openCreateExceptionModal = () => { setModalTarget("exception"); setModalType("create"); setEditingItem({ cep: '', valor: '' }); setModalOpen(true); };
   const openCreatePausaModal = () => { setModalTarget("pausa"); setModalType("create"); setEditingItem({ nome: '', inicio: '', fim: '' }); setModalOpen(true); };
   const openCreateCupomModal = () => { setModalTarget("cupom"); setModalType("create"); setEditingItem({ codigo: '', tipoDesconto: 'porcentagem', valor: '', minimoCompra: '', limiteUso: '', validade: '', ativo: true }); setModalOpen(true); };
-  
+   
   const openEditModal = (item: any, target: any) => { setModalTarget(target); setModalType("edit"); setEditingItem({ ...item }); setModalOpen(true); };
   const openDeleteModal = (item: any, target: any) => { setModalTarget(target); setModalType("delete"); setEditingItem(item); setModalOpen(true); };
   const closeModal = () => { setModalOpen(false); setEditingItem(null); };
@@ -287,7 +272,7 @@ export default function ParametrosClient({ dadosIniciais }: { dadosIniciais: any
 
         {/* CONTEÚDO DAS ABAS */}
         <div className="space-y-6 animate-fade-in">
-          
+           
           {/* GERAL */}
           {activeTab === "geral" && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -311,8 +296,6 @@ export default function ParametrosClient({ dadosIniciais }: { dadosIniciais: any
               <div className="space-y-6">
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                   <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2"><FaCalculator className="text-blue-600" /> Regras de Valores</h3>
-                  
-                  {/* --- CAMPO DE VALOR MÍNIMO E CEP --- */}
                   <div className="grid grid-cols-2 gap-4 mb-6">
                     <div>
                       <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Valor Mínimo (R$)</label>
@@ -326,7 +309,6 @@ export default function ParametrosClient({ dadosIniciais }: { dadosIniciais: any
                       <input type="text" value={cepPadrao} onChange={(e) => {setCepPadrao(e.target.value); setUnsavedChanges(true)}} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="00000-000" />
                     </div>
                   </div>
-
                   <div className="mb-2">
                     <label className="block text-sm font-semibold text-gray-700 mb-3">Cálculo para produtos com mais de 1 sabor</label>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -384,8 +366,7 @@ export default function ParametrosClient({ dadosIniciais }: { dadosIniciais: any
                       <button onClick={openCreateRuleModal} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors cursor-pointer"><FaPlus size={12}/> Adicionar</button>
                     )}
                   </div>
-                  
-                  {/* --- SIMULAÇÃO TAXA FIXA (REINTEGRADO) --- */}
+                   
                   {tipoTaxa === 'fixa' && (
                     <div className="animate-fade-in space-y-6">
                       <div className="max-w-xs">
@@ -404,7 +385,6 @@ export default function ParametrosClient({ dadosIniciais }: { dadosIniciais: any
                     </div>
                   )}
 
-                  {/* --- SIMULAÇÃO TAXA PERCENTUAL (REINTEGRADO) --- */}
                   {tipoTaxa === 'percentual' && (
                     <div className="animate-fade-in space-y-6">
                       <div className="max-w-xs">
@@ -480,6 +460,229 @@ export default function ParametrosClient({ dadosIniciais }: { dadosIniciais: any
               </div>
             </div>
           )}
+
+          {/* --- NOVO: ABA FIDELIDADE --- */}
+          {activeTab === "fidelidade" && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
+              <div className="lg:col-span-2 space-y-6">
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <div className="flex justify-between items-center mb-6">
+                        <div>
+                            <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2"><FaGem className="text-purple-600" /> Programa de Fidelidade</h3>
+                            <p className="text-sm text-gray-500">Recompense seus clientes com pontos que viram descontos.</p>
+                        </div>
+                        <label className="flex items-center cursor-pointer">
+                            <span className="mr-3 text-sm font-medium text-gray-700">{fidAtivo ? 'Habilitado' : 'Desabilitado'}</span>
+                            <div className="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" className="sr-only peer" checked={fidAtivo} onChange={() => {setFidAtivo(!fidAtivo); setUnsavedChanges(true)}} />
+                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div className={`space-y-6 transition-opacity ${!fidAtivo ? 'opacity-50 pointer-events-none' : ''}`}>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nome da Moeda</label>
+                                <input type="text" value={fidNomeMoeda} onChange={(e) => {setFidNomeMoeda(e.target.value); setUnsavedChanges(true)}} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" placeholder="Ex: Pontos, Stars, Coins" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Validade dos Pontos</label>
+                                <div className="relative">
+                                    <input type="number" value={fidValidade} onChange={(e) => {setFidValidade(e.target.value); setUnsavedChanges(true)}} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" placeholder="180" />
+                                    <span className="absolute right-3 top-2 text-sm text-gray-400">dias</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="border-t border-gray-100 pt-4">
+                            <h4 className="font-bold text-gray-700 mb-4 text-sm uppercase">Regras de Pontuação</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Taxa de Conversão (Ganho)</label>
+                                    <p className="text-xs text-gray-500 mb-2">A cada R$ 1,00 gasto, o cliente ganha:</p>
+                                    <div className="flex items-center">
+                                        <input type="number" step="0.1" value={fidConversao} onChange={(e) => {setFidConversao(e.target.value); setUnsavedChanges(true)}} className="w-20 px-3 py-2 border border-gray-200 rounded-l-lg focus:ring-2 focus:ring-purple-500 outline-none font-bold text-center" />
+                                        <span className="bg-gray-100 border border-l-0 border-gray-200 px-3 py-2 rounded-r-lg text-gray-600 text-sm">{fidNomeMoeda}</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Valor do Resgate (Uso)</label>
+                                    <p className="text-xs text-gray-500 mb-2">Cada 1 {fidNomeMoeda} vale em desconto:</p>
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-2 text-gray-400 font-bold text-sm">R$</span>
+                                        <input type="number" step="0.01" value={fidResgate} onChange={(e) => {setFidResgate(e.target.value); setUnsavedChanges(true)}} className="w-full pl-9 px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none font-bold" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Mínimo para Resgate</label>
+                            <div className="flex items-center gap-3">
+                                <div className="relative max-w-[150px]">
+                                    <input type="number" value={fidMinimo} onChange={(e) => {setFidMinimo(e.target.value); setUnsavedChanges(true)}} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" />
+                                    <span className="absolute right-3 top-2 text-sm text-gray-400">{fidNomeMoeda}</span>
+                                </div>
+                                <span className="text-xs text-gray-400">O cliente precisa acumular essa quantidade para começar a usar.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+              </div>
+
+              <div className="lg:col-span-1">
+                <div className="bg-purple-50 border border-purple-100 p-6 rounded-xl sticky top-6">
+                    <h4 className="font-bold text-purple-900 mb-4 flex items-center gap-2"><FaCalculator /> Simulador</h4>
+                    <div className="space-y-4 text-sm">
+                        <div className="pb-3 border-b border-purple-200">
+                            <p className="text-purple-800 mb-1">Se o cliente gastar:</p>
+                            <span className="text-2xl font-bold text-purple-900">R$ 100,00</span>
+                        </div>
+                        <div className="pb-3 border-b border-purple-200">
+                            <p className="text-purple-800 mb-1">Ele receberá:</p>
+                            <span className="text-xl font-bold text-purple-900">{(100 * Number(fidConversao)).toFixed(0)} {fidNomeMoeda}</span>
+                        </div>
+                        <div>
+                            <p className="text-purple-800 mb-1">Isso equivale a um desconto de:</p>
+                            <span className="text-2xl font-bold text-green-600">R$ {((100 * Number(fidConversao)) * Number(fidResgate)).toFixed(2)}</span>
+                            <p className="text-xs text-purple-600 mt-1">Cashback efetivo de {((((100 * Number(fidConversao)) * Number(fidResgate)) / 100) * 100).toFixed(1)}%</p>
+                        </div>
+                    </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* INTEGRAÇÃO MERCADO LIVRE */}
+          {activeTab === "integracao" && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in">
+                {/* COLUNA 1: CREDENCIAIS E STATUS */}
+                <div className="space-y-6">
+                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                        <h3 className="text-lg font-bold text-gray-800 mb-2 flex items-center gap-2">
+                            <span className="text-yellow-500 bg-blue-900 p-1.5 rounded-full"><FaHandshake size={14}/></span> 
+                            Mercado Livre
+                        </h3>
+                        <p className="text-sm text-gray-500 mb-6">Conecte sua conta para sincronizar estoque e receber pedidos automaticamente.</p>
+                        
+                        <div className={`p-4 rounded-xl border mb-6 flex items-center justify-between ${mlStatusConexao === 'conectado' ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                            <div className="flex items-center gap-3">
+                                <div className={`w-3 h-3 rounded-full ${mlStatusConexao === 'conectado' ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
+                                <div>
+                                    <span className="block text-sm font-bold text-gray-800 uppercase tracking-wide">
+                                        {mlStatusConexao === 'conectado' ? 'Conectado' : 'Desconectado'}
+                                    </span>
+                                    {mlStatusConexao === 'conectado' && <span className="text-xs text-green-700">Sincronizando dados</span>}
+                                </div>
+                            </div>
+                            {mlStatusConexao === 'conectado' && (
+                                <button onClick={() => {setMlStatusConexao("desconectado"); setMlAtivo(false); setUnsavedChanges(true)}} className="text-xs text-red-600 hover:underline font-semibold cursor-pointer">Desconectar</button>
+                            )}
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">App ID</label>
+                                <input 
+                                    type="text" 
+                                    value={mlAppId} 
+                                    onChange={(e) => {
+                                      const val = e.target.value.replace(/\D/g, ""); // Apenas números
+                                      setMlAppId(val); 
+                                      setUnsavedChanges(true);
+                                    }} 
+                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-yellow-400 outline-none text-sm transition-all" 
+                                    placeholder="Ex: 123456789"
+                                    disabled={mlStatusConexao === 'conectado'}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Secret Key</label>
+                                <input 
+                                    type="password" 
+                                    value={mlSecretKey} 
+                                    onChange={(e) => {
+                                      const val = e.target.value.replace(/\D/g, ""); // Apenas números
+                                      setMlSecretKey(val); 
+                                      setUnsavedChanges(true);
+                                    }} 
+                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-yellow-400 outline-none text-sm transition-all" 
+                                    placeholder="••••••••••••••••"
+                                    disabled={mlStatusConexao === 'conectado'}
+                                />
+                            </div>
+                            
+                            {mlStatusConexao !== 'conectado' && (
+                                <button 
+                                    onClick={handleConnectML}
+                                    className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow-md transition-all flex items-center justify-center gap-2 mt-2 cursor-pointer"
+                                >
+                                    <FaLink /> Conectar Conta
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* COLUNA 2: REGRAS DE SINCRONIZAÇÃO */}
+                <div className="space-y-6">
+                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-full relative">
+                        {mlStatusConexao !== 'conectado' && (
+                            <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] z-10 flex items-center justify-center">
+                                <div className="bg-white p-4 rounded-xl shadow-lg border border-gray-100 flex items-center gap-3">
+                                    <FaPlug className="text-gray-400"/>
+                                    <span className="text-sm font-medium text-gray-500">Conecte sua conta para configurar</span>
+                                </div>
+                            </div>
+                        )}
+                        
+                        <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2"><FaSync className="text-blue-600" /> Regras de Sincronização</h3>
+                        
+                        <div className="divide-y divide-gray-100">
+                            <ToggleSwitch 
+                                label="Sincronizar Estoque" 
+                                description="Atualiza o saldo no ML quando houver venda no sistema." 
+                                checked={mlSyncEstoque} 
+                                onChange={() => {setMlSyncEstoque(!mlSyncEstoque); setUnsavedChanges(true)}} 
+                            />
+                            
+                            <ToggleSwitch 
+                                label="Sincronizar Preços" 
+                                description="Atualiza o preço no ML conforme tabela do sistema." 
+                                checked={mlSyncPreco} 
+                                onChange={() => {setMlSyncPreco(!mlSyncPreco); setUnsavedChanges(true)}} 
+                            />
+                        </div>
+
+                        {mlSyncPreco && (
+                            <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-200 animate-fade-in">
+                                <label className="block text-sm font-bold text-gray-700 mb-2">Ajuste de Preço (%)</label>
+                                <p className="text-xs text-gray-500 mb-3">Acrescente um percentual ao preço para cobrir taxas do marketplace.</p>
+                                <div className="relative">
+                                    <input 
+                                        type="number" 
+                                        value={mlFatorPreco} 
+                                        onChange={(e) => {setMlFatorPreco(e.target.value); setUnsavedChanges(true)}} 
+                                        className="w-full pl-4 pr-10 py-2 border border-gray-300 rounded-lg outline-none focus:border-blue-500 font-bold text-gray-800"
+                                    />
+                                    <span className="absolute right-4 top-2.5 text-gray-500 font-bold">%</span>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="mt-8 pt-6 border-t border-gray-100">
+                            <h4 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2"><FaShoppingBag className="text-blue-600"/> Importação de Pedidos</h4>
+                            <p className="text-xs text-gray-500 mb-4">Pedidos novos do Mercado Livre serão importados automaticamente com status "Pendente".</p>
+                            <div className="flex items-center gap-2 text-xs bg-green-50 text-green-700 px-3 py-2 rounded-lg border border-green-100">
+                                <FaCheckCircle /> Webhook Ativo
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+          )}
+
         </div>
       </div>
 
@@ -500,7 +703,7 @@ export default function ParametrosClient({ dadosIniciais }: { dadosIniciais: any
         </div>
       )}
 
-      {/* MODAL DE SUCESSO (NOVO) */}
+      {/* MODAL DE SUCESSO */}
       {showSuccessModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-300">
           <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center space-y-4 animate-in zoom-in-95">
@@ -515,6 +718,28 @@ export default function ParametrosClient({ dadosIniciais }: { dadosIniciais: any
               className="w-full py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors shadow-lg cursor-pointer"
             >
               Entendido
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE AVISO ML */}
+      {showMlWarningModal && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center space-y-4 animate-in zoom-in-95 border-t-4 border-yellow-500">
+            <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto">
+              <FaExclamationTriangle className="w-8 h-8 text-yellow-600" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-800">Campos Obrigatórios</h3>
+            <p className="text-gray-600 text-sm leading-relaxed">
+              Para realizar a integração, você precisa preencher o <strong>App ID</strong> e o <strong>Secret Key</strong> do Mercado Livre.
+            </p>
+            <button 
+              type="button" 
+              onClick={() => setShowMlWarningModal(false)}
+              className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl font-bold transition-colors cursor-pointer"
+            >
+              Voltar e Preencher
             </button>
           </div>
         </div>

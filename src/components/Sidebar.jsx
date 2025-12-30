@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FaChevronDown, FaXmark, FaBars, FaGears, FaStore, FaPlus, FaThumbtack } from "react-icons/fa6"; 
+import { FaChevronDown, FaXmark, FaBars, FaGears, FaStore, FaThumbtack } from "react-icons/fa6"; 
 import { GoGraph } from "react-icons/go";
 import { FaServer } from "react-icons/fa";
 import {
@@ -14,9 +14,8 @@ import {
   MdRestaurantMenu,
   MdAttachMoney,
   MdReceipt,
-  MdLogout, // <--- 1. Importação do ícone de Sair
+  MdLogout, 
 } from "react-icons/md";
-import { TbLayoutSidebarLeftCollapse, TbLayoutSidebarLeftExpand } from "react-icons/tb";
 
 const Sidebar = ({ open, setOpen }) => {
   const [subMenus, setSubMenus] = useState({});
@@ -106,7 +105,18 @@ const Sidebar = ({ open, setOpen }) => {
         { title: "Consultar Caixa", path: "/system/pdv/caixa" },
       ],
     },
-    { title: "NF-e", icon: <MdReceipt />, path: "/system/nfe", key: "nfe" },
+    
+    {
+      title: "NF-e",
+      icon: <MdReceipt />,
+      key: "nfe",
+      subMenu: [
+        { title: "Emitir NF-e", path: "/system/nfe/emitir" },
+        { title: "Pedidos", path: "/system/nfe/pedidos" },
+        { title: "Orçamentos", path: "/system/nfe/orcamentos" }, 
+      ],
+    },
+
     {
       title: "Financeiro",
       icon: <MdAttachMoney />,
@@ -160,11 +170,10 @@ const Sidebar = ({ open, setOpen }) => {
     {/* BOTÃO FLUTUANTE MOBILE */}
     {mounted && createPortal(
       <button
-        onClick={() => setOpen(!open)} // Inverte o estado ao clicar
+        onClick={() => setOpen(!open)} 
         style={{ zIndex: 2147483647 }}
         className="md:hidden fixed top-4 left-4 p-2 bg-[#00254d] text-white rounded-md shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:bg-[#001a35] transition-all border border-white/20"
       >
-        {/* Alterna o ícone se estiver aberto ou fechado, ou mantém apenas o FaBars se preferir */}
         {open ? <FaXmark size={24} /> : <FaBars size={24} />}
       </button>,
       document.body
@@ -331,10 +340,9 @@ const Sidebar = ({ open, setOpen }) => {
             ))}
           </ul>
 
-          {/* --- 2. BOTÃO SAIR (FIXADO NO RODAPÉ DO MENU) --- */}
           <div className="border-t border-gray-200 mt-2 pt-2">
             <Link
-              href="/auth/login" // Link para sua tela de login
+              href="/auth/login"
               className={`group flex items-center py-3 px-3 rounded-lg transition-all duration-200 border border-transparent hover:bg-red-50 hover:border-red-100 ${open ? "gap-3 justify-start" : "justify-center"}`}
             >
               <span className="text-2xl text-gray-500 group-hover:text-red-600 transition-colors shrink-0">

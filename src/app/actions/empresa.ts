@@ -5,9 +5,7 @@ import { revalidatePath } from "next/cache";
 
 export async function updateEmpresaSettings(id: number, data: any) {
   try {
-    // 1. MAPEAMENTO EXPLÍCITO
-    // Isso garante que apenas campos que existem no seu model Empresa sejam enviados.
-    // Também trata os campos opcionais que você pediu para não serem obrigatórios.
+    // 1. MAPEAMENTO EXPLÍCITO DOS DADOS
     const updateData = {
       ie: data.ie || null,
       im: data.im || null,

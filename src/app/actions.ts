@@ -82,8 +82,8 @@ export async function deleteGroup(id: number) {
 export async function saveProduct(data: any) {
   try {
     const precoFinal = data.hasVariations && data.variations.length > 0 
-      ? Math.min(...data.variations.map((v: any) => parseFloat(v.price))) 
-      : parseFloat(data.price);
+      ? Math.min(...data.variations.map((v: any) => parseFloat(v.price || 0))) 
+      : parseFloat(data.price || 0);
 
     let grupoIdConectado = null;
     if (data.group) {
@@ -91,53 +91,45 @@ export async function saveProduct(data: any) {
       if (grupo) grupoIdConectado = grupo.id;
     }
 
-    // MAPEAMENTO DOS SWITCHES PARA O BANCO
-    const payloadProduto = {
+    const upsertData = {
       nome: data.description,
-      categoria: data.group,
       preco: precoFinal,
+      categoria: data.group,
       imagem: data.image,
-      ativo: data.active,                               // Salva Switch "Produto Ativo"
-      estoque: data.isAvailableOnline ? 100 : 0,        // Salva Switch "Controle de Estoque"
-      permiteComplemento: data.allowsComplements,      // Salva Switch "Permitir Complemento"
-      visivelOnline: data.isVisibleOnline,              // Salva Switch "Visível Online"
+      ativo: data.active,
+      permiteComplemento: data.allowsComplements,
+      visivelOnline: data.isVisibleOnline,
       grupoId: grupoIdConectado,
-      atualizadoEm: new Date(),
     };
 
-    if (data.id && data.id !== 0) {
-      await prisma.$transaction([
-        prisma.produto.update({ where: { id: data.id }, data: payloadProduto }),
-        prisma.variacao.deleteMany({ where: { produtoId: data.id } }),
-        ...(data.hasVariations ? [
-          prisma.variacao.createMany({
-            data: data.variations.map((v: any) => ({
-              nome: v.name,
-              preco: parseFloat(v.price) || 0,
-              produtoId: data.id
-            }))
-          })
-        ] : [])
-      ]);
-    } else {
-      await prisma.produto.create({
-        data: {
-          ...payloadProduto,
-          variacoes: {
-            create: data.hasVariations ? data.variations.map((v: any) => ({
-              nome: v.name,
-              preco: parseFloat(v.price) || 0
-            })) : []
-          }
+    const produto = await prisma.produto.upsert({
+      where: { id: data.id || 0 },
+      update: {
+        ...upsertData,
+        // O SEGREDO ESTÁ AQUI:
+        variacoes: {
+          deleteMany: {}, // 1. Deleta TODAS as variações existentes deste produto
+          create: data.hasVariations ? data.variations.map((v: any) => ({
+            nome: v.name,
+            preco: parseFloat(v.price || 0)
+          })) : [] // 2. Cria apenas as que restaram no seu formulário
         }
-      });
-    }
+      },
+      create: {
+        ...upsertData,
+        variacoes: {
+          create: data.hasVariations ? data.variations.map((v: any) => ({
+            nome: v.name,
+            preco: parseFloat(v.price || 0)
+          })) : []
+        }
+      }
+    });
 
-    revalidatePath('/system/cardapio/produtos');
-    return { success: true };
+    return { success: true, product: produto };
   } catch (error) {
     console.error(error);
-    return { success: false, error };
+    return { success: false };
   }
 }
 
@@ -222,3 +214,4 @@ export async function deleteLancamento(id: number) {
     return { success: false, error: "Erro ao excluir lançamento." };
   }
 }
+

@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Search, Calendar, ChevronRight, Filter, DollarSign, 
   AlertTriangle, CheckCircle2, Wallet, X, ArrowUpCircle, ArrowDownCircle, CreditCard 
 } from 'lucide-react';
+import { getMovimentacoesCaixa } from '@/app/actions/caixa'; 
 
 // --- TIPAGENS ---
 interface CaixaHistorico {
@@ -27,102 +28,129 @@ interface Movimentacao {
   valor: number;
 }
 
-// --- MOCK DE DADOS INTELIGENTE ---
-const simularBuscaMovimentos = (caixaId: number): Movimentacao[] => {
-  switch (caixaId) {
-    case 1:
-      return [
-        { id: 1, hora: '08:00', descricao: 'Fundo de Troco', tipo: 'SUPRIMENTO', formaPagamento: 'Dinheiro', valor: 150.00 },
-        { id: 2, hora: '09:30', descricao: 'Venda Balcão (Pães)', tipo: 'VENDA', formaPagamento: 'Dinheiro', valor: 85.00 },
-        { id: 3, hora: '10:15', descricao: 'Encomenda: 2 Bolos', tipo: 'VENDA', formaPagamento: 'Crédito', valor: 250.00 },
-        { id: 4, hora: '12:30', descricao: 'Almoço (Salgados)', tipo: 'VENDA', formaPagamento: 'Dinheiro', valor: 180.00 },
-        { id: 5, hora: '14:00', descricao: 'Pgto Gás (Sangria)', tipo: 'SANGRIA', formaPagamento: 'Dinheiro', valor: -120.00 },
-        { id: 6, hora: '17:00', descricao: 'Pico da Tarde', tipo: 'VENDA', formaPagamento: 'Dinheiro', valor: 450.00 },
-        { id: 7, hora: '18:00', descricao: 'Fechamento (Diversos)', tipo: 'VENDA', formaPagamento: 'Débito', valor: 1455.00 },
-      ];
-    case 2:
-      return [
-        { id: 10, hora: '08:00', descricao: 'Fundo de Troco', tipo: 'SUPRIMENTO', formaPagamento: 'Dinheiro', valor: 200.00 },
-        { id: 11, hora: '10:00', descricao: 'Vendas Manhã', tipo: 'VENDA', formaPagamento: 'Dinheiro', valor: 500.00 },
-        { id: 12, hora: '13:00', descricao: 'Vendas Tarde', tipo: 'VENDA', formaPagamento: 'Dinheiro', valor: 800.00 },
-        { id: 13, hora: '16:00', descricao: 'Encomenda Grande', tipo: 'VENDA', formaPagamento: 'Pix', valor: 500.00 },
-      ];
-    default:
-      return [
-        { id: 99, hora: '08:00', descricao: 'Abertura Padrão', tipo: 'SUPRIMENTO', formaPagamento: 'Dinheiro', valor: 100.00 },
-        { id: 100, hora: '12:00', descricao: 'Vendas do Dia', tipo: 'VENDA', formaPagamento: 'Diversos', valor: 500.00 },
-      ];
-  }
+// --- FUNÇÕES UTILITÁRIAS SEGURAS ---
+const formatMoney = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+
+// Esta função garante que a data seja formatada de forma consistente
+const formatDateSafe = (dateStr: string) => {
+    if (!dateStr) return "-";
+    // Criamos a data e garantimos que o formato seja consistente
+    // O segredo é evitar depender do locale do servidor vs cliente se possível, 
+    // mas aqui vamos usar uma abordagem de formatação padrão.
+    try {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + 
+               date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+        return dateStr;
+    }
 };
 
-// --- COMPONENTE MODAL CENTRALIZADO ---
+// --- COMPONENTE MODAL DE MOVIMENTAÇÕES ---
 function ModalMovimentacoes({ caixa, onClose }: { caixa: CaixaHistorico, onClose: () => void }) {
-  const movimentos = useMemo(() => simularBuscaMovimentos(caixa.id), [caixa.id]);
-  const formatMoney = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+  const [movimentos, setMovimentos] = useState<Movimentacao[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const dados = await getMovimentacoesCaixa(caixa.id);
+        setMovimentos(dados);
+      } catch (err) {
+        console.error("Falha ao carregar movimentações");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [caixa.id]);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95">
         
+        {/* HEADER */}
         <div className="bg-gray-50 border-b border-gray-100 p-4 md:p-5 flex justify-between items-center shrink-0">
           <div className="min-w-0">
             <h2 className="text-base md:text-lg font-bold text-gray-800 truncate">Caixa #{caixa.id}</h2>
-            <p className="text-xs text-gray-500 truncate">{caixa.operador} | {new Date(caixa.dataFechamento).toLocaleDateString('pt-BR')}</p>
+            {/* suppressHydrationWarning é a chave para evitar o erro em datas simples */}
+            <p className="text-xs text-gray-500 truncate" suppressHydrationWarning>
+                {caixa.operador} | {new Date(caixa.dataFechamento).toLocaleDateString('pt-BR')}
+            </p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full transition-colors shrink-0">
+          <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full transition-colors shrink-0 cursor-pointer">
             <X size={20} className="text-gray-500" />
           </button>
         </div>
 
-        <div className="overflow-y-auto flex-1 no-scrollbar">
-          <div className="block md:hidden space-y-2 p-4">
-             {movimentos.map((mov) => (
-                <div key={mov.id} className="p-3 border rounded-xl bg-gray-50 flex justify-between items-center">
-                   <div className="min-w-0">
-                      <p className="text-[10px] font-mono text-gray-400">{mov.hora}</p>
-                      <p className="text-sm font-bold text-gray-700 truncate">{mov.descricao}</p>
-                      <p className="text-[10px] text-gray-500 uppercase">{mov.formaPagamento}</p>
-                   </div>
-                   <p className={`text-sm font-black whitespace-nowrap ${mov.valor < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                      {formatMoney(mov.valor)}
-                   </p>
-                </div>
-             ))}
-          </div>
-
-          <table className="hidden md:table w-full text-left border-collapse">
-            <thead className="bg-gray-50/50 sticky top-0 z-10 font-bold text-gray-500 uppercase text-[10px]">
-              <tr>
-                <th className="px-5 py-3">Hora</th>
-                <th className="px-5 py-3">Descrição</th>
-                <th className="px-5 py-3">Pagamento</th>
-                <th className="px-5 py-3 text-right">Valor</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {movimentos.map((mov) => (
-                <tr key={mov.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-5 py-3 text-sm text-gray-600 font-mono">{mov.hora}</td>
-                  <td className="px-5 py-3">
-                    <div className="flex items-center gap-2">
-                      {mov.tipo === 'VENDA' && <ArrowUpCircle size={16} className="text-green-500" />}
-                      {mov.tipo === 'SUPRIMENTO' && <Wallet size={16} className="text-blue-500" />}
-                      {mov.tipo === 'SANGRIA' && <ArrowDownCircle size={16} className="text-red-500" />}
-                      <span className="text-sm font-medium text-gray-700">{mov.descricao}</span>
+        {/* CONTEÚDO */}
+        <div className="overflow-y-auto flex-1 no-scrollbar relative">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center h-48 space-y-3">
+               <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+               <p className="text-sm text-gray-400 font-medium">Carregando detalhes...</p>
+            </div>
+          ) : movimentos.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-48 text-gray-400">
+               <Filter size={32} className="opacity-20 mb-2"/>
+               <p className="text-sm">Nenhuma movimentação registrada.</p>
+            </div>
+          ) : (
+            <>
+              {/* MOBILE VIEW */}
+              <div className="block md:hidden space-y-2 p-4">
+                 {movimentos.map((mov) => (
+                    <div key={mov.id} className="p-3 border rounded-xl bg-gray-50 flex justify-between items-center">
+                       <div className="min-w-0">
+                          <p className="text-[10px] font-mono text-gray-400">{mov.hora}</p>
+                          <p className="text-sm font-bold text-gray-700 truncate">{mov.descricao}</p>
+                          <p className="text-[10px] text-gray-500 uppercase">{mov.formaPagamento}</p>
+                       </div>
+                       <p className={`text-sm font-black whitespace-nowrap ${mov.valor < 0 || mov.tipo === 'SANGRIA' ? 'text-red-600' : 'text-green-600'}`}>
+                          {formatMoney(mov.valor)}
+                       </p>
                     </div>
-                  </td>
-                  <td className="px-5 py-3 text-sm text-gray-500 flex items-center gap-1">
-                    <CreditCard size={14} /> {mov.formaPagamento}
-                  </td>
-                  <td className={`px-5 py-3 text-sm font-bold text-right ${mov.valor < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                    {formatMoney(mov.valor)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                 ))}
+              </div>
+
+              {/* DESKTOP TABLE */}
+              <table className="hidden md:table w-full text-left border-collapse">
+                <thead className="bg-gray-50/50 sticky top-0 z-10 font-bold text-gray-500 uppercase text-[10px]">
+                  <tr>
+                    <th className="px-5 py-3">Hora</th>
+                    <th className="px-5 py-3">Descrição</th>
+                    <th className="px-5 py-3">Pagamento</th>
+                    <th className="px-5 py-3 text-right">Valor</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {movimentos.map((mov) => (
+                    <tr key={mov.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-5 py-3 text-sm text-gray-600 font-mono">{mov.hora}</td>
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-2">
+                          {mov.tipo === 'VENDA' && <ArrowUpCircle size={16} className="text-green-500" />}
+                          {mov.tipo === 'SUPRIMENTO' && <Wallet size={16} className="text-blue-500" />}
+                          {mov.tipo === 'SANGRIA' && <ArrowDownCircle size={16} className="text-red-500" />}
+                          <span className="text-sm font-medium text-gray-700">{mov.descricao}</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3 text-sm text-gray-500 flex items-center gap-1">
+                        <CreditCard size={14} /> {mov.formaPagamento}
+                      </td>
+                      <td className={`px-5 py-3 text-sm font-bold text-right ${mov.valor < 0 || mov.tipo === 'SANGRIA' ? 'text-red-600' : 'text-green-600'}`}>
+                        {formatMoney(mov.valor)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
         </div>
 
+        {/* FOOTER */}
         <div className="bg-gray-50 border-t border-gray-100 p-4 shrink-0">
           <div className="flex justify-between items-center">
             <span className="text-[10px] md:text-xs text-gray-400 font-bold uppercase">Total Líquido:</span>
@@ -139,6 +167,13 @@ export default function HistoricoCaixaClient({ dadosIniciais = [] }: { dadosInic
   const [filtroNome, setFiltroNome] = useState('');
   const [filtroData, setFiltroData] = useState('');
   const [caixaSelecionado, setCaixaSelecionado] = useState<CaixaHistorico | null>(null);
+  
+  // State para controlar se o componente montou no cliente (evita hydration error)
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const caixasFiltrados = useMemo(() => {
     return dadosIniciais.filter((caixa) => {
@@ -153,12 +188,8 @@ export default function HistoricoCaixaClient({ dadosIniciais = [] }: { dadosInic
   const totalQuebras = caixasFiltrados.reduce((acc, curr) => acc + curr.quebra, 0);
   const mediaCaixa = caixasFiltrados.length > 0 ? totalMovimentado / caixasFiltrados.length : 0;
 
-  const formatMoney = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-  const formatDateTime = (dateStr: string) => {
-    if (!dateStr) return "-";
-    const date = new Date(dateStr);
-    return date.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-  };
+  // Se não montou, retorna null ou um esqueleto básico para evitar mismatch
+  if (!isMounted) return <div className="min-h-screen bg-gray-50/50 p-4 md:p-6 space-y-6"></div>;
 
   return (
     <div className="min-h-screen bg-gray-50/50 p-4 md:p-6 space-y-6">
@@ -168,14 +199,14 @@ export default function HistoricoCaixaClient({ dadosIniciais = [] }: { dadosInic
         <p className="text-gray-500 text-xs md:text-sm">Visualize o fechamento de turnos anteriores.</p>
       </div>
 
-      {/* KPI CARDS RESPONSIVOS */}
+      {/* KPI CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <KPICard title="Total Fechado" value={totalMovimentado} icon={<Wallet size={20} />} color="bg-blue-50 border-blue-100" textColor="text-blue-700"/>
         <KPICard title="Quebras" value={totalQuebras} icon={<AlertTriangle size={20} />} color="bg-red-50 border-red-100" textColor="text-red-700"/>
         <KPICard title="Média" value={mediaCaixa} icon={<DollarSign size={20} />} color="bg-green-50 border-green-100" textColor="text-green-700" className="sm:col-span-2 lg:col-span-1"/>
       </div>
 
-      {/* FILTROS ADAPTÁVEIS */}
+      {/* FILTROS */}
       <div className="bg-white p-3 md:p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
@@ -195,23 +226,23 @@ export default function HistoricoCaixaClient({ dadosIniciais = [] }: { dadosInic
               value={filtroData} 
               onChange={(e) => setFiltroData(e.target.value)} 
             />
-            {filtroData && <button onClick={() => setFiltroData('')} className="text-[10px] text-red-500 font-bold px-1">LIMPAR</button>}
+            {filtroData && <button onClick={() => setFiltroData('')} className="text-[10px] text-red-500 font-bold px-1 cursor-pointer">LIMPAR</button>}
         </div>
       </div>
 
-      {/* LISTAGEM RESPONSIVA */}
+      {/* LISTAGEM */}
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
         {/* MOBILE LIST */}
         <div className="md:hidden divide-y divide-gray-100">
            {caixasFiltrados.length > 0 ? (
              caixasFiltrados.map((caixa) => (
-                <div key={caixa.id} onClick={() => setCaixaSelecionado(caixa)} className="p-4 active:bg-gray-50 transition-colors flex items-center justify-between gap-3">
+                <div key={caixa.id} onClick={() => setCaixaSelecionado(caixa)} className="p-4 active:bg-gray-50 transition-colors flex items-center justify-between gap-3 cursor-pointer">
                    <div className="min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-[10px] font-black text-blue-600">#{caixa.id}</span>
                         <h4 className="font-bold text-gray-800 text-sm truncate">{caixa.operador}</h4>
                       </div>
-                      <p className="text-[10px] text-gray-500 uppercase font-medium">{formatDateTime(caixa.dataFechamento)}</p>
+                      <p className="text-[10px] text-gray-500 uppercase font-medium">{formatDateSafe(caixa.dataFechamento)}</p>
                       <div className="mt-2 flex items-center gap-2">
                         <span className="text-xs font-black text-gray-800">{formatMoney(caixa.total)}</span>
                         {caixa.quebra !== 0 && (
@@ -250,14 +281,15 @@ export default function HistoricoCaixaClient({ dadosIniciais = [] }: { dadosInic
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <p className="text-[11px] text-gray-600 font-medium">A: {formatDateTime(caixa.dataAbertura)}</p>
-                    <p className="text-[11px] text-gray-600 font-medium">F: {formatDateTime(caixa.dataFechamento)}</p>
+                    {/* suppressHydrationWarning evita erro se o servidor e cliente tiverem fusos diferentes */}
+                    <p className="text-[11px] text-gray-600 font-medium" suppressHydrationWarning>A: {formatDateSafe(caixa.dataAbertura)}</p>
+                    <p className="text-[11px] text-gray-600 font-medium" suppressHydrationWarning>F: {formatDateSafe(caixa.dataFechamento)}</p>
                   </td>
                   <td className="px-6 py-4 text-center"><span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-bold">{caixa.qtdVendas}</span></td>
                   <td className="px-6 py-4 text-right font-bold text-gray-800 text-sm">{formatMoney(caixa.total)}</td>
                   <td className={`px-6 py-4 text-right text-xs font-bold ${caixa.quebra < 0 ? 'text-red-600' : 'text-green-600'}`}>{caixa.quebra !== 0 ? formatMoney(caixa.quebra) : '-'}</td>
                   <td className="px-6 py-4 text-center">
-                    <button onClick={() => setCaixaSelecionado(caixa)} className="inline-flex items-center gap-1 bg-white border border-blue-200 text-blue-600 hover:bg-blue-600 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm">
+                    <button onClick={() => setCaixaSelecionado(caixa)} className="inline-flex items-center gap-1 bg-white border border-blue-200 text-blue-600 hover:bg-blue-600 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm cursor-pointer">
                       Detalhes
                     </button>
                   </td>

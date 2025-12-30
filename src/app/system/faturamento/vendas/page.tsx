@@ -1,35 +1,12 @@
-import { prisma } from "@/lib/prisma";
-import HistoricoCaixaClient from "./HistoricoCaixaClient";
+import { getHistoricoCaixas } from '@/app/actions/caixa';
+import HistoricoCaixaClient from './HistoricoCaixaClient'; // Ajuste o caminho conforme sua estrutura
 
 export default async function Page() {
-  const empresaId = 1; // Ajuste conforme autenticação
+  const empresaId = 1; // Substituir pelo ID da sessão real no futuro
 
-  // Busca pedidos/vendas agrupados por data
-  const dados = await prisma.pedido.findMany({
-    where: { 
-      status: 'Finalizado' // ou o status que indica venda concluída
-    },
-    orderBy: { data: 'desc' },
-    include: {
-      itens: {
-        include: {
-          produto: true
-        }
-      }
-    }
-  });
+  // 1. Busca os dados no banco (Server Side)
+  const dadosDoBanco = await getHistoricoCaixas(empresaId);
 
-  // Serialização (Decimal para Number, Date para String)
-  const dadosFormatados = dados.map((p) => ({
-    id: p.id,
-    operador: "Sistema", // Como não há campo operador, usar valor padrão
-    dataAbertura: p.data.toISOString(),
-    dataFechamento: p.data.toISOString(),
-    saldoInicial: 0,
-    total: Number(p.total),
-    quebra: 0,
-    qtdVendas: p.itens.length
-  }));
-
-  return <HistoricoCaixaClient dadosIniciais={dadosFormatados} />;
+  // 2. Passa os dados reais para o componente
+  return <HistoricoCaixaClient dadosIniciais={dadosDoBanco} />;
 }

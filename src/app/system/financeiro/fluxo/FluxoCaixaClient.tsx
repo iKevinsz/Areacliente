@@ -1,25 +1,41 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
   Plus, Search, Filter, Calendar, ArrowUpCircle, ArrowDownCircle,
-  FileText, Trash2, Edit3, X, Save, TrendingUp, TrendingDown, Wallet, AlertTriangle, CheckCircle2, ChevronRight
+  FileText, Trash2, Edit3, X, Save, TrendingUp, TrendingDown, Wallet, AlertTriangle, CheckCircle2, ChevronRight, Loader2
 } from 'lucide-react';
+import { saveTransacao, deleteTransacao } from '@/app/actions/financeiro';
 
 const HIGH_VALUE_THRESHOLD = 10000; 
 
+// Interface compatível com o retorno da Server Action
 interface Transacao {
-  id: number | string;
+  id: number | null; // ID pode ser null se for novo
   descricao: string;
   tipo: 'receita' | 'despesa';
   categoria: string;
   valor: number;
-  data: string;
+  data: string; // YYYY-MM-DD
   status: 'confirmado' | 'pendente';
 }
 
-export default function FluxoCaixaClient() {
-  const [transacoes, setTransacoes] = useState<Transacao[]>([]);
+interface FluxoCaixaClientProps {
+  initialTransacoes: Transacao[];
+}
+
+export default function FluxoCaixaClient({ initialTransacoes }: FluxoCaixaClientProps) {
+  const router = useRouter();
+  
+  // Agora usamos as props iniciais vindas do banco
+  const [transacoes, setTransacoes] = useState<Transacao[]>(initialTransacoes);
+  
+  // Atualiza o estado local quando as props (dados do servidor) mudam após router.refresh()
+  React.useEffect(() => {
+    setTransacoes(initialTransacoes);
+  }, [initialTransacoes]);
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTipo, setFilterTipo] = useState<'todos' | 'receita' | 'despesa'>('todos');
   const [startDate, setStartDate] = useState('');
@@ -31,22 +47,13 @@ export default function FluxoCaixaClient() {
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false); 
   const [isHighValueModalOpen, setIsHighValueModalOpen] = useState(false); 
   
-  const [editingId, setEditingId] = useState<number | string | null>(null);
-  const [idToDelete, setIdToDelete] = useState<number | string | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [idToDelete, setIdToDelete] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState<Transacao>({
-    id: '', descricao: '', tipo: 'receita', valor: 0, data: '', categoria: '', status: 'confirmado'
+    id: null, descricao: '', tipo: 'receita', valor: 0, data: '', categoria: '', status: 'confirmado'
   });
-
-  useEffect(() => {
-    const saved = localStorage.getItem('@FluxoCaixa:transacoes');
-    if (saved) setTransacoes(JSON.parse(saved));
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('@FluxoCaixa:transacoes', JSON.stringify(transacoes));
-  }, [transacoes]);
 
   const filteredTransacoes = useMemo(() => {
     return transacoes.filter(item => {
@@ -71,7 +78,7 @@ export default function FluxoCaixaClient() {
     } else {
       setEditingId(null);
       const hoje = new Date().toISOString().split('T')[0];
-      setFormData({ id: '', descricao: '', tipo: 'receita', valor: 0, data: hoje, categoria: '', status: 'confirmado' });
+      setFormData({ id: null, descricao: '', tipo: 'receita', valor: 0, data: hoje, categoria: '', status: 'confirmado' });
     }
     setIsModalOpen(true);
   };
@@ -82,22 +89,27 @@ export default function FluxoCaixaClient() {
     setFormData({ ...formData, valor: numericValue });
   };
 
-  const executeSave = () => {
+  // --- ALTERAÇÃO PRINCIPAL: SALVAR NO BANCO ---
+  const executeSave = async () => {
     setIsLoading(true);
     setIsHighValueModalOpen(false);
 
-    if (editingId) {
-      setTransacoes(prev => prev.map(t => t.id === editingId ? { ...formData } : t));
-    } else {
-      const novoLancamento = { ...formData, id: Date.now().toString() };
-      setTransacoes(prev => [novoLancamento, ...prev]);
-    }
+    try {
+        const result = await saveTransacao(formData);
 
-    setTimeout(() => {
-      setIsLoading(false);
-      setIsModalOpen(false);
-      setIsSuccessModalOpen(true);
-    }, 500);
+        if (result.success) {
+           setIsModalOpen(false);
+           setIsSuccessModalOpen(true);
+           router.refresh(); // Sincroniza com o servidor
+        } else {
+           alert("Erro ao salvar. Tente novamente.");
+        }
+    } catch (error) {
+        console.error(error);
+        alert("Erro de conexão.");
+    } finally {
+        setIsLoading(false);
+    }
   };
 
   const handleSaveCheck = (e: React.FormEvent) => {
@@ -113,16 +125,31 @@ export default function FluxoCaixaClient() {
     executeSave();
   };
 
-  const openDeleteModal = (id: number | string, e: React.MouseEvent) => {
+  const openDeleteModal = (id: number | null, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!id) return;
     setIdToDelete(id);
     setIsDeleteModalOpen(true);
   };
 
-  const handleConfirmDelete = () => {
-    setTransacoes(prev => prev.filter(t => t.id !== idToDelete));
-    setIsDeleteModalOpen(false);
-    setIdToDelete(null);
+  // --- ALTERAÇÃO PRINCIPAL: DELETAR NO BANCO ---
+  const handleConfirmDelete = async () => {
+    if (idToDelete) {
+        setIsLoading(true);
+        try {
+            await deleteTransacao(idToDelete);
+            // Atualização Otimista (opcional): Remove da lista visualmente antes do refresh
+            setTransacoes(prev => prev.filter(t => t.id !== idToDelete));
+            
+            setIsDeleteModalOpen(false);
+            setIdToDelete(null);
+            router.refresh();
+        } catch (error) {
+            alert("Erro ao excluir.");
+        } finally {
+            setIsLoading(false);
+        }
+    }
   };
 
   const formatMoney = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
@@ -134,9 +161,9 @@ export default function FluxoCaixaClient() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-gray-800 flex items-center gap-2">Fluxo de Caixa</h1>
-          <p className="text-gray-500 text-xs md:text-sm">Gerenciamento offline das suas movimentações.</p>
+          <p className="text-gray-500 text-xs md:text-sm">Gerencie suas receitas e despesas.</p>
         </div>
-        <button onClick={() => handleOpenModal()} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-md transition-all text-sm font-medium active:scale-95">
+        <button onClick={() => handleOpenModal()} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-md transition-all text-sm font-medium active:scale-95 cursor-pointer">
           <Plus size={18} /> Novo Lançamento
         </button>
       </div>
@@ -235,8 +262,8 @@ export default function FluxoCaixaClient() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={(e) => {e.stopPropagation(); handleOpenModal(item)}} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"><Edit3 size={16} /></button>
-                        <button onClick={(e) => openDeleteModal(item.id!, e)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Trash2 size={16} /></button>
+                        <button onClick={(e) => {e.stopPropagation(); handleOpenModal(item)}} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg cursor-pointer"><Edit3 size={16} /></button>
+                        <button onClick={(e) => openDeleteModal(item.id, e)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg cursor-pointer"><Trash2 size={16} /></button>
                       </div>
                     </td>
                   </tr>
@@ -281,13 +308,13 @@ export default function FluxoCaixaClient() {
           <div className="bg-white w-full max-w-lg rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-2 sm:zoom-in-95 duration-200">
             <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
               <h2 className="text-lg font-bold text-gray-800">{editingId ? 'Editar Movimentação' : 'Novo Lançamento'}</h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 p-1 hover:bg-gray-200 rounded-full"><X size={20} /></button>
+              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 p-1 hover:bg-gray-200 rounded-full cursor-pointer"><X size={20} /></button>
             </div>
             
             <form onSubmit={handleSaveCheck} className="p-6 space-y-5 overflow-y-auto max-h-[80vh]">
               <div className="flex bg-gray-100 p-1 rounded-xl">
-                <button type="button" onClick={() => setFormData({...formData, tipo: 'receita'})} className={`flex-1 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${formData.tipo === 'receita' ? 'bg-white text-green-600 shadow-sm' : 'text-gray-500'}`}><ArrowUpCircle size={16}/> Receita</button>
-                <button type="button" onClick={() => setFormData({...formData, tipo: 'despesa'})} className={`flex-1 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${formData.tipo === 'despesa' ? 'bg-white text-red-600 shadow-sm' : 'text-gray-500'}`}><ArrowDownCircle size={16}/> Despesa</button>
+                <button type="button" onClick={() => setFormData({...formData, tipo: 'receita'})} className={`flex-1 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${formData.tipo === 'receita' ? 'bg-white text-green-600 shadow-sm' : 'text-gray-500'}`}><ArrowUpCircle size={16}/> Receita</button>
+                <button type="button" onClick={() => setFormData({...formData, tipo: 'despesa'})} className={`flex-1 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${formData.tipo === 'despesa' ? 'bg-white text-red-600 shadow-sm' : 'text-gray-500'}`}><ArrowDownCircle size={16}/> Despesa</button>
               </div>
 
               <div>
@@ -313,7 +340,7 @@ export default function FluxoCaixaClient() {
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Status</label>
-                  <select className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white outline-none focus:ring-2 focus:ring-blue-500" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as any})} >
+                  <select className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as any})} >
                     <option value="confirmado">Confirmado</option>
                     <option value="pendente">Pendente</option>
                   </select>
@@ -321,9 +348,9 @@ export default function FluxoCaixaClient() {
               </div>
 
               <div className="pt-4 flex flex-col-reverse sm:flex-row gap-3">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50">Cancelar</button>
-                <button type="submit" disabled={isLoading} className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-xl text-sm hover:bg-blue-700 font-black shadow-lg shadow-blue-100 disabled:opacity-70 active:scale-95">
-                  {isLoading ? 'Salvando...' : 'SALVAR LANÇAMENTO'}
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 cursor-pointer">Cancelar</button>
+                <button type="submit" disabled={isLoading} className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-xl text-sm hover:bg-blue-700 font-black shadow-lg shadow-blue-100 disabled:opacity-70 active:scale-95 flex items-center justify-center gap-2 cursor-pointer">
+                  {isLoading ? <Loader2 className="animate-spin" size={18} /> : 'SALVAR LANÇAMENTO'}
                 </button>
               </div>
             </form>
@@ -337,10 +364,12 @@ export default function FluxoCaixaClient() {
           <div className="bg-white w-full max-w-sm rounded-2xl shadow-xl p-6 text-center animate-in zoom-in-95">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600"><Trash2 size={32} /></div>
             <h3 className="text-xl font-bold text-gray-800 mb-2">Excluir Lançamento?</h3>
-            <p className="text-sm text-gray-500 mb-6">Esta ação não pode ser desfeita localmente.</p>
+            <p className="text-sm text-gray-500 mb-6">Esta ação apagará o registro permanentemente do banco.</p>
             <div className="flex gap-3">
-              <button onClick={() => setIsDeleteModalOpen(false)} className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-medium">Não</button>
-              <button onClick={handleConfirmDelete} className="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 shadow-lg shadow-red-100">Sim, Excluir</button>
+              <button onClick={() => setIsDeleteModalOpen(false)} className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-medium cursor-pointer">Não</button>
+              <button onClick={handleConfirmDelete} className="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 shadow-lg shadow-red-100 flex items-center justify-center gap-2 cursor-pointer">
+                {isLoading ? <Loader2 className="animate-spin" size={16} /> : 'Sim, Excluir'}
+              </button>
             </div>
           </div>
         </div>
@@ -355,8 +384,8 @@ export default function FluxoCaixaClient() {
             <h3 className="text-xl font-bold mb-2 text-gray-800">Valor Elevado</h3>
             <p className="text-sm text-gray-600 mb-6">Você está registrando {formatMoney(formData.valor)}. Confirma?</p>
             <div className="flex gap-2">
-              <button onClick={() => setIsHighValueModalOpen(false)} className="flex-1 py-3 bg-gray-100 text-gray-600 rounded-xl font-bold">Voltar</button>
-              <button onClick={executeSave} className="flex-1 py-3 bg-orange-600 text-white rounded-xl font-bold shadow-lg">Sim, Confirmar</button>
+              <button onClick={() => setIsHighValueModalOpen(false)} className="flex-1 py-3 bg-gray-100 text-gray-600 rounded-xl font-bold cursor-pointer">Voltar</button>
+              <button onClick={executeSave} className="flex-1 py-3 bg-orange-600 text-white rounded-xl font-bold shadow-lg cursor-pointer">Sim, Confirmar</button>
             </div>
           </div>
         </div>
@@ -383,7 +412,7 @@ const FeedbackModal = ({ type, title, desc, btnText, btnColor, onClose }: any) =
       </div>
       <h3 className="text-xl font-bold mb-2 text-gray-800">{title}</h3>
       <p className="text-sm text-gray-600 mb-6">{desc}</p>
-      <button onClick={onClose} className={`w-full ${btnColor} text-white py-3 rounded-xl font-bold shadow-lg transition-all active:scale-95`}>{btnText}</button>
+      <button onClick={onClose} className={`w-full ${btnColor} text-white py-3 rounded-xl font-bold shadow-lg transition-all active:scale-95 cursor-pointer`}>{btnText}</button>
     </div>
   </div>
 );

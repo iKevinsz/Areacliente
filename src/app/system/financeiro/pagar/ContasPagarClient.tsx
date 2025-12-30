@@ -1,23 +1,27 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
   Plus, Search, Filter, Calendar, AlertCircle, CheckCircle2, 
-  FileText, Trash2, Edit3, DollarSign, X, Save, AlertTriangle, ChevronRight 
+  FileText, Trash2, Edit3, DollarSign, X, Save, AlertTriangle, ChevronRight, Loader2
 } from 'lucide-react';
+import { saveContaPagar, deleteContaPagar, type ContaPagarDTO } from '@/app/actions/contas';
 
-interface Conta {
-  id: number | string;
-  descricao: string;
-  fornecedor: string;
-  valor: number;
-  vencimento: string;
-  status: 'pendente' | 'pago' | 'vencido';
-  categoria: string;
+interface ContasPagarClientProps {
+  initialContas: ContaPagarDTO[];
 }
 
-export default function ContasPagarPage() {
-  const [contas, setContas] = useState<Conta[]>([]);
+export default function ContasPagarClient({ initialContas }: ContasPagarClientProps) {
+  const router = useRouter();
+  
+  // Sincronização com o banco via Props
+  const [contas, setContas] = useState<ContaPagarDTO[]>(initialContas);
+
+  useEffect(() => {
+    setContas(initialContas);
+  }, [initialContas]);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'todos' | 'pendente' | 'pago' | 'vencido'>('todos');
   const [startDate, setStartDate] = useState('');
@@ -28,22 +32,13 @@ export default function ContasPagarPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
 
-  const [idToDelete, setIdToDelete] = useState<number | string | null>(null);
-  const [editingId, setEditingId] = useState<number | string | null>(null);
+  const [idToDelete, setIdToDelete] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const [formData, setFormData] = useState<Conta>({
-    id: '', descricao: '', fornecedor: '', valor: 0, vencimento: '', categoria: '', status: 'pendente'
+  const [formData, setFormData] = useState<ContaPagarDTO>({
+    id: null, descricao: '', fornecedor: '', valor: 0, vencimento: '', categoria: '', status: 'pendente'
   });
-
-  useEffect(() => {
-    const saved = localStorage.getItem('@Financeiro:contasPagar');
-    if (saved) setContas(JSON.parse(saved));
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('@Financeiro:contasPagar', JSON.stringify(contas));
-  }, [contas]);
 
   const filteredContas = useMemo(() => {
     return contas.filter(conta => {
@@ -61,46 +56,62 @@ export default function ContasPagarPage() {
   const totalVencido = contas.filter(c => c.status === 'vencido').reduce((acc, curr) => acc + curr.valor, 0);
   const totalPago = contas.filter(c => c.status === 'pago').reduce((acc, curr) => acc + curr.valor, 0);
 
-  const handleOpenModal = (conta?: Conta) => {
+  const handleOpenModal = (conta?: ContaPagarDTO) => {
     if (conta) {
       setEditingId(conta.id);
       setFormData({ ...conta });
     } else {
       setEditingId(null);
       const hoje = new Date().toISOString().split('T')[0];
-      setFormData({ id: '', descricao: '', fornecedor: '', valor: 0, vencimento: hoje, categoria: '', status: 'pendente' });
+      setFormData({ id: null, descricao: '', fornecedor: '', valor: 0, vencimento: hoje, categoria: '', status: 'pendente' });
     }
     setIsModalOpen(true);
   };
 
-  const handleSaveConta = (e: React.FormEvent) => {
+  // --- SAVE ---
+  const handleSaveConta = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.descricao || !formData.valor || !formData.vencimento) {
       setIsValidationModalOpen(true);
       return;
     }
+    
     setIsLoading(true);
-    setTimeout(() => {
-      if (editingId) {
-        setContas(prev => prev.map(c => c.id === editingId ? { ...formData } : c));
-      } else {
-        const novaConta = { ...formData, id: Date.now().toString() };
-        setContas(prev => [novaConta, ...prev]);
-      }
-      setIsLoading(false);
-      setIsModalOpen(false);
-      setShowSuccessModal(true);
-    }, 400);
+    try {
+        const result = await saveContaPagar(formData);
+        if (result.success) {
+            setIsModalOpen(false);
+            setShowSuccessModal(true);
+            router.refresh();
+        } else {
+            alert("Erro ao salvar.");
+        }
+    } catch (error) {
+        console.error(error);
+    } finally {
+        setIsLoading(false);
+    }
   };
 
-  const handleConfirmDelete = () => {
-    setContas(prev => prev.filter(c => c.id !== idToDelete));
-    setIsDeleteModalOpen(false);
-    setIdToDelete(null);
+  // --- DELETE ---
+  const handleConfirmDelete = async () => {
+    if (idToDelete) {
+        setIsLoading(true);
+        await deleteContaPagar(idToDelete);
+        
+        // Otimismo
+        setContas(prev => prev.filter(c => c.id !== idToDelete));
+        
+        setIsDeleteModalOpen(false);
+        setIdToDelete(null);
+        setIsLoading(false);
+        router.refresh();
+    }
   };
 
-  const openDeleteModal = (id: number | string, e: React.MouseEvent) => {
+  const openDeleteModal = (id: number | null, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!id) return;
     setIdToDelete(id);
     setIsDeleteModalOpen(true);
   };
@@ -115,7 +126,8 @@ export default function ContasPagarPage() {
       vencido: 'bg-red-100 text-red-700 border-red-200',
     };
     const labels = { pago: 'Pago', pendente: 'A Vencer', vencido: 'Vencido' };
-    return <span className={`px-2 md:px-3 py-1 rounded-full text-[10px] md:text-xs font-semibold border ${styles[status as keyof typeof styles]}`}>{labels[status as keyof typeof labels]}</span>;
+    // @ts-ignore
+    return <span className={`px-2 md:px-3 py-1 rounded-full text-[10px] md:text-xs font-semibold border ${styles[status]}`}>{labels[status as keyof typeof labels]}</span>;
   };
 
   return (
@@ -125,7 +137,7 @@ export default function ContasPagarPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-gray-800 flex items-center gap-2">Contas a Pagar</h1>
-          <p className="text-gray-500 text-xs md:text-sm">Gerencie suas despesas offline.</p>
+          <p className="text-gray-500 text-xs md:text-sm">Gerencie suas despesas e pagamentos.</p>
         </div>
         <button onClick={() => handleOpenModal()} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-md transition-all text-sm font-medium cursor-pointer active:scale-95">
           <Plus size={18} /> Nova Conta
@@ -160,12 +172,12 @@ export default function ContasPagarPage() {
               <input type="date" className="flex-1 sm:flex-none bg-white border border-gray-200 text-gray-600 text-xs rounded-lg px-2 py-1.5 outline-none" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
               <span className="text-gray-400 text-xs">atê</span>
               <input type="date" className="flex-1 sm:flex-none bg-white border border-gray-200 text-gray-600 text-xs rounded-lg px-2 py-1.5 outline-none" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-              {(startDate || endDate) && <button onClick={() => {setStartDate(''); setEndDate('')}} className="text-xs text-red-500 font-bold ml-1">X</button>}
+              {(startDate || endDate) && <button onClick={() => {setStartDate(''); setEndDate('')}} className="text-xs text-red-500 font-bold ml-1 cursor-pointer">X</button>}
             </div>
         </div>
       </div>
 
-      {/* TABELA / LISTA MOBILE */}
+      {/* TABELA */}
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
         {/* VIEW DESKTOP */}
         <div className="hidden md:block overflow-x-auto">
@@ -201,8 +213,8 @@ export default function ContasPagarPage() {
                     <td className="px-6 py-4 text-center"><StatusBadge status={conta.status} /></td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={(e) => { e.stopPropagation(); handleOpenModal(conta); }} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"><Edit3 size={16} /></button>
-                        <button onClick={(e) => openDeleteModal(conta.id, e)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Trash2 size={16} /></button>
+                        <button onClick={(e) => { e.stopPropagation(); handleOpenModal(conta); }} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"><Edit3 size={16} /></button>
+                        <button onClick={(e) => openDeleteModal(conta.id, e)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={16} /></button>
                       </div>
                     </td>
                   </tr>
@@ -245,13 +257,13 @@ export default function ContasPagarPage() {
         </div>
       </div>
 
-      {/* MODAL PRINCIPAL */}
+      {/* MODAL EDITAR/CRIAR */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-2 sm:zoom-in-95 duration-200">
             <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
               <h2 className="text-lg font-bold text-gray-800">{editingId ? 'Editar Conta' : 'Nova Conta'}</h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 p-1 hover:bg-gray-200 rounded-full"><X size={20} /></button>
+              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 p-1 hover:bg-gray-200 rounded-full cursor-pointer"><X size={20} /></button>
             </div>
             
             <form onSubmit={handleSaveConta} className="p-6 space-y-4 overflow-y-auto max-h-[80vh]">
@@ -294,22 +306,22 @@ export default function ContasPagarPage() {
 
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Status</label>
-                <select className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                <select className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer"
                   value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as any})} >
-                  <option value="pendente">Pendente</option>
+                  <option value="pendente">A Vencer</option>
                   <option value="pago">Pago</option>
                   <option value="vencido">Vencido</option>
                 </select>
               </div>
 
               <div className="pt-4 flex flex-col-reverse sm:flex-row gap-3">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50">Cancelar</button>
-                <button type="submit" disabled={isLoading} className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm hover:bg-blue-700 font-bold flex items-center justify-center gap-2 shadow-lg shadow-blue-100 disabled:opacity-70 active:scale-95">
-                  {isLoading ? 'Salvando...' : <><Save size={16} /> Salvar Conta</>}
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors cursor-pointer">Cancelar</button>
+                <button type="submit" disabled={isLoading} className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm hover:bg-blue-700 font-bold flex items-center justify-center gap-2 shadow-lg shadow-blue-100 disabled:opacity-70 active:scale-95 transition-all cursor-pointer">
+                  {isLoading ? <Loader2 className="animate-spin" size={16} /> : <><Save size={16} /> Salvar Conta</>}
                 </button>
               </div>
               {editingId && (
-                <button type="button" onClick={(e) => openDeleteModal(editingId, e as any)} className="w-full text-xs text-red-500 font-bold py-2 mt-2 hover:bg-red-50 rounded-lg transition-colors">
+                <button type="button" onClick={(e) => openDeleteModal(editingId, e as any)} className="w-full text-xs text-red-500 font-bold py-2 mt-2 hover:bg-red-50 rounded-lg transition-colors cursor-pointer">
                   Excluir Despesa
                 </button>
               )}
@@ -323,19 +335,19 @@ export default function ContasPagarPage() {
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-sm rounded-2xl shadow-xl p-6 text-center animate-in zoom-in-95">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600">
-              <Trash2 size={32} />
+              {isLoading ? <Loader2 className="animate-spin" size={32} /> : <Trash2 size={32} />}
             </div>
             <h3 className="text-xl font-bold text-gray-800 mb-2">Excluir Conta?</h3>
             <p className="text-sm text-gray-500 mb-6">Remover esta despesa permanentemente?</p>
             <div className="flex gap-3">
-              <button onClick={() => setIsDeleteModalOpen(false)} className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200">Não</button>
-              <button onClick={handleConfirmDelete} className="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 shadow-lg shadow-red-100">Sim</button>
+              <button onClick={() => setIsDeleteModalOpen(false)} className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors cursor-pointer">Não</button>
+              <button onClick={handleConfirmDelete} disabled={isLoading} className="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 shadow-lg shadow-red-100 transition-all cursor-pointer">Sim</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* FEEDBACKS GERAIS */}
+      {/* FEEDBACKS */}
       {isValidationModalOpen && <FeedbackModal type="warning" title="Campos Obrigatórios" desc="Preencha Descrição, Valor e Vencimento." btnText="Entendido" btnColor="bg-orange-600" onClose={() => setIsValidationModalOpen(false)} />}
       {showSuccessModal && <FeedbackModal type="success" title="Sucesso!" desc="Dados salvos com sucesso." btnText="OK" btnColor="bg-blue-600" onClose={() => setShowSuccessModal(false)} />}
     </div>
@@ -354,12 +366,11 @@ const KPICard = ({ title, value, icon, color, textColor }: any) => (
   </div>
 );
 
-// Componente corrigido para aceitar contextos de Tabela ou Div
 const NoData = ({ colSpan, isTable = false }: { colSpan?: number, isTable?: boolean }) => {
   const content = (
     <div className="px-6 py-12 text-center text-gray-400 bg-gray-50/50 flex flex-col items-center justify-center gap-2 w-full">
       <Filter size={32} className="opacity-20" />
-      <p className="text-sm">Nenhuma despesa encontrada.</p>
+      <p className="text-sm">Nenhuma conta encontrada.</p>
     </div>
   );
 
@@ -382,7 +393,7 @@ const FeedbackModal = ({ type, title, desc, btnText, btnColor, onClose }: any) =
       </div>
       <h3 className="text-xl font-bold mb-2 text-gray-800">{title}</h3>
       <p className="text-sm text-gray-600 mb-6">{desc}</p>
-      <button onClick={onClose} className={`w-full ${btnColor} text-white py-3 rounded-xl font-bold shadow-lg transition-all active:scale-95`}>{btnText}</button>
+      <button onClick={onClose} className={`w-full ${btnColor} text-white py-3 rounded-xl font-bold shadow-lg transition-all active:scale-95 cursor-pointer`}>{btnText}</button>
     </div>
   </div>
 );

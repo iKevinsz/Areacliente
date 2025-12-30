@@ -1,6 +1,6 @@
 "use server";
 
-import { prisma } from "@/lib/prisma"; // Certifique-se de ter o prisma exportado em lib
+import { prisma } from "@/lib/prisma"; 
 import bcrypt from "bcrypt";
 import { revalidatePath } from "next/cache";
 

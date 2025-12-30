@@ -23,18 +23,20 @@ model Avaliacao {
 }
 
 model Caixa {
-  id             Int              @id @default(autoincrement())
+  id             Int       @id @default(autoincrement())
   empresaId      Int
   operador       String
-  dataAbertura   DateTime         @default(now())
+  dataAbertura   DateTime  @default(now())
   dataFechamento DateTime?
-  saldoInicial   Decimal          @default(0.00) @db.Decimal(10, 2)
-  saldoFinal     Decimal?         @db.Decimal(10, 2)
-  quebraDeCaixa  Decimal?         @db.Decimal(10, 2)
-  status         String           @default("ABERTO")
-  empresa        Empresa          @relation(fields: [empresaId], references: [id], map: "Caixa_empresaId_fkey")
-  movimentos     CaixaMovimento[]
-  pedidos        Pedido[]
+  saldoInicial   Decimal   @default(0.00) @db.Decimal(10, 2)
+  saldoFinal     Decimal?  @db.Decimal(10, 2)
+  quebraDeCaixa  Decimal?  @default(0.00) @db.Decimal(10, 2) // Usado para cálculo de quebra
+  status         String    @default("ABERTO") // ABERTO, FECHADO
+
+  empresa Empresa @relation(fields: [empresaId], references: [id], map: "Caixa_empresaId_fkey")
+
+  movimentos CaixaMovimento[]
+  pedidos    Pedido[]
 
   @@index([empresaId], map: "Caixa_empresaId_fkey")
   @@map("caixa")
@@ -44,11 +46,12 @@ model CaixaMovimento {
   id             Int                   @id @default(autoincrement())
   caixaId        Int
   dataHora       DateTime?             @default(now()) @db.DateTime(0)
-  tipo           caixa_movimentos_tipo
+  tipo           caixa_movimentos_tipo // VENDA, SANGRIA, SUPRIMENTO
   descricao      String?               @db.VarChar(255)
   formaPagamento String?               @db.VarChar(50)
   valor          Decimal               @db.Decimal(10, 2)
-  caixa          Caixa                 @relation(fields: [caixaId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "caixa_movimentos_ibfk_1")
+
+  caixa Caixa @relation(fields: [caixaId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "caixa_movimentos_ibfk_1")
 
   @@index([caixaId], map: "caixaId")
   @@map("caixa_movimentos")
@@ -116,47 +119,47 @@ model Cupom {
 }
 
 model Empresa {
-  id                    Int                    @id @default(autoincrement())
-  cnpj                  String                 @unique(map: "Empresa_cnpj_key")
-  email                 String?
-  bairro                String?
-  categorias            String?
-  celular               String?
-  cep                   String?
-  cidade                String?
-  complemento           String?
-  contato               String?
-  endereco              String?
-  facebook              String?
-  fusoHorario           String?
-  ie                    String?
-  im                    String?
-  instagram             String?
-  linkLoja              String?
-  logo                  String?                @db.LongText
-  nomeFantasia          String?
-  numero                String?
-  razaoSocial           String?
-  segmento              String?
-  site                  String?
-  telefone              String?
-  telefoneComercial     String?
-  tempoEntrega          String?
-  tempoEstimado         String?
-  twitter               String?
-  uf                    String?
-  whatsapp              String?
-  youtube               String?
-  calculoPreco          String                 @default("media")
-  cepObrigatorio        Boolean                @default(false)
-  configEntrega         Json?
-  configPagamento       Json?
-  cpfObrigatorio        Boolean                @default(true)
-  enviarWhatsapp        Boolean                @default(true)
-  lojaFechada           Boolean                @default(false)
-  ocultarCardapio       Boolean                @default(false)
-  valorMinimo           Decimal                @default(0.00) @db.Decimal(10, 2)
-  
+  id                Int     @id @default(autoincrement())
+  cnpj              String  @unique(map: "Empresa_cnpj_key")
+  email             String?
+  bairro            String?
+  categorias        String?
+  celular           String?
+  cep               String?
+  cidade            String?
+  complemento       String?
+  contato           String?
+  endereco          String?
+  facebook          String?
+  fusoHorario       String?
+  ie                String?
+  im                String?
+  instagram         String?
+  linkLoja          String?
+  logo              String? @db.LongText
+  nomeFantasia      String?
+  numero            String?
+  razaoSocial       String?
+  segmento          String?
+  site              String?
+  telefone          String?
+  telefoneComercial String?
+  tempoEntrega      String?
+  tempoEstimado     String?
+  twitter           String?
+  uf                String?
+  whatsapp          String?
+  youtube           String?
+  calculoPreco      String  @default("media")
+  cepObrigatorio    Boolean @default(false)
+  configEntrega     Json?
+  configPagamento   Json?
+  cpfObrigatorio    Boolean @default(true)
+  enviarWhatsapp    Boolean @default(true)
+  lojaFechada       Boolean @default(false)
+  ocultarCardapio   Boolean @default(false)
+  valorMinimo       Decimal @default(0.00) @db.Decimal(10, 2)
+
   // Relações
   avaliacoes            Avaliacao[]
   caixas                Caixa[]
@@ -195,25 +198,25 @@ model FluxoCaixa {
   status    String   @default("Confirmado")
   empresa   Empresa  @relation(fields: [empresaId], references: [id])
 
-  criadoEm  DateTime @default(now())
+  criadoEm DateTime @default(now())
 
   @@index([empresaId], map: "FluxoCaixa_empresaId_fkey")
   @@map("fluxocaixa")
 }
 
 model Grupo {
-  id                Int                @id @default(autoincrement())
-  nome              String
-  empresaId         Int
-  ativo             Boolean            @default(true)
-  ordem             Int                @default(0)
-  empresa           Empresa            @relation(fields: [empresaId], references: [id], map: "Grupo_empresaId_fkey")
-  
+  id        Int     @id @default(autoincrement())
+  nome      String
+  empresaId Int
+  ativo     Boolean @default(true)
+  ordem     Int     @default(0)
+  empresa   Empresa @relation(fields: [empresaId], references: [id], map: "Grupo_empresaId_fkey")
+
   // CORREÇÃO: Grupo tem GrupoVariacao e GrupoComplemento
-  complementos      GrupoComplemento[]
-  variacoes         GrupoVariacao[]
-  
-  produtos          Produto[]
+  complementos GrupoComplemento[]
+  variacoes    GrupoVariacao[]
+
+  produtos Produto[]
 
   @@index([empresaId], map: "Grupo_empresaId_fkey")
   @@map("grupo")
@@ -292,33 +295,34 @@ model Pedido {
   caixaId Int?
   itens   ItemPedido[]
   caixa   Caixa?       @relation(fields: [caixaId], references: [id], map: "Pedido_caixaId_fkey")
+  nfe     Nfe?
 
   @@index([caixaId], map: "Pedido_caixaId_fkey")
   @@map("pedido")
 }
 
 model Produto {
-  id                 Int           @id @default(autoincrement())
+  id                 Int      @id @default(autoincrement())
   nome               String
-  descricao          String?       @db.Text
-  preco              Decimal       @db.Decimal(10, 2)
+  descricao          String?  @db.Text
+  preco              Decimal  @db.Decimal(10, 2)
   categoria          String?
-  estoque            Int           @default(0)
-  imagem             String?       @db.LongText
-  ativo              Boolean       @default(true)
+  estoque            Int      @default(0)
+  imagem             String?  @db.LongText
+  ativo              Boolean  @default(true)
   grupoId            Int?
-  criadoEm           DateTime      @default(now())
-  atualizadoEm       DateTime      @updatedAt
-  permiteComplemento Boolean       @default(false)
-  visivelOnline      Boolean       @default(true)
-  
+  criadoEm           DateTime @default(now())
+  atualizadoEm       DateTime @updatedAt
+  permiteComplemento Boolean  @default(false)
+  visivelOnline      Boolean  @default(true)
+
   // Relações
-  complementos       Complemento[]
-  itensPedido        ItemPedido[]
-  grupo              Grupo?        @relation(fields: [grupoId], references: [id], map: "Produto_grupoId_fkey")
-  
+  complementos Complemento[]
+  itensPedido  ItemPedido[]
+  grupo        Grupo?        @relation(fields: [grupoId], references: [id], map: "Produto_grupoId_fkey")
+
   // CORREÇÃO: Produto tem Variacoes, não GrupoVariacao
-  variacoes          Variacao[]
+  variacoes Variacao[]
 
   @@index([grupoId], map: "Produto_grupoId_fkey")
   @@map("produto")
@@ -365,3 +369,16 @@ enum caixa_movimentos_tipo {
   SUPRIMENTO
 }
 
+model Nfe {
+  id       Int      @id @default(autoincrement())
+  pedidoId Int      @unique
+  chave    String?
+  status   String // pendente, autorizada, erro, cancelada
+  xml      String?  @db.LongText
+  pdfUrl   String?
+  criadoEm DateTime @default(now())
+
+  pedido Pedido @relation(fields: [pedidoId], references: [id])
+
+  @@map("nfe")
+}

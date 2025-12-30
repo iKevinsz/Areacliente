@@ -33,7 +33,7 @@ export async function salvarParametros(empresaId: number, data: any) {
       },
     });
 
-    // 2. Atualizar Horários (Correção: horariosFuncionamento)
+    // 2. Atualizar Horários 
     await prisma.horarioFuncionamento.deleteMany({ where: { empresaId } });
     if (data.horarios && data.horarios.length > 0) {
       await prisma.horarioFuncionamento.createMany({
@@ -48,7 +48,7 @@ export async function salvarParametros(empresaId: number, data: any) {
       });
     }
 
-    // 3. Atualizar Pausas (Correção: pausas)
+    // 3. Atualizar Pausas 
     await prisma.pausa.deleteMany({ where: { empresaId } });
     if (data.pausas && data.pausas.length > 0) {
       await prisma.pausa.createMany({
@@ -61,7 +61,7 @@ export async function salvarParametros(empresaId: number, data: any) {
       });
     }
 
-    // 4. Atualizar Cupons (Correção: cupons)
+    // 4. Atualizar Cupons 
     await prisma.cupom.deleteMany({ where: { empresaId } });
     if (data.cupons && data.cupons.length > 0) {
       await prisma.cupom.createMany({
@@ -78,7 +78,7 @@ export async function salvarParametros(empresaId: number, data: any) {
       });
     }
 
-    // 5. Atualizar Regras de Frete (Correção: regrasFrete)
+    // 5. Atualizar Regras de Frete 
     await prisma.regraFrete.deleteMany({ where: { empresaId } });
     const regrasParaCriar = [];
 
@@ -105,7 +105,7 @@ export async function salvarParametros(empresaId: number, data: any) {
       await prisma.regraFrete.createMany({ data: regrasParaCriar });
     }
 
-    // 6. Atualizar Exceções (Correção: excecoesFrete)
+    // 6. Atualizar Exceções 
     await prisma.excecaoFrete.deleteMany({ where: { empresaId } });
     if (data.excecoesCep && data.excecoesCep.length > 0) {
       await prisma.excecaoFrete.createMany({

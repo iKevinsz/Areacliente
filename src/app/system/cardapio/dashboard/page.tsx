@@ -17,7 +17,7 @@ import {
 // --- DADOS MOCKADOS (Substituir pela sua API/Banco de Dados) ---
 const kpiData = {
   faturamentoMes: 12450.00,
-  faturamentoAno: 158900.00, // Novo campo solicitado
+  faturamentoAno: 158900.00, 
   pedidos: 452,
   visitas: 3200,
 };

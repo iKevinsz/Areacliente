@@ -1,106 +1,81 @@
-'use server'
+'use server';
 
-import { prisma } from "@/lib/prisma"
-import { revalidatePath } from "next/cache"
+import { prisma } from '@/lib/prisma'; // <--- CORREÇÃO AQUI (Com chaves)
+import { revalidatePath } from 'next/cache';
 
-/**
- * Converte strings de moeda (BRL ou Internacional) para number.
- */
-function parseCurrency(value: string | number): number {
-  if (typeof value === 'number') return value;
-  if (!value) return 0;
-  
-  if (!value.includes(",")) {
-    return parseFloat(value);
+// Busca transações
+export async function getTransacoes(empresaId: number) {
+  try {
+    const data = await prisma.fluxoCaixa.findMany({
+      where: { empresaId },
+      orderBy: { data: 'desc' }
+    });
+
+    return data.map(t => ({
+      id: t.id,
+      descricao: t.descricao,
+      tipo: t.tipo as 'receita' | 'despesa',
+      categoria: t.categoria || '',
+      valor: Number(t.valor),
+      data: t.data.toISOString().split('T')[0],
+      status: (t.status.toLowerCase()) as 'confirmado' | 'pendente'
+    }));
+  } catch (error) {
+    console.error("Erro ao buscar transações:", error);
+    return [];
   }
-
-  return parseFloat(
-    value
-      .replace("R$", "")
-      .replace(/\./g, "")
-      .replace(",", ".")
-      .trim()
-  );
 }
 
-/**
- * Função unificada para salvar ou atualizar lançamentos.
- * Detecta automaticamente se deve criar ou editar baseado na presença do ID.
- */
-export async function saveLancamento(formData: FormData) {
+// Salva (Novo) ou Atualiza (Edição)
+export async function saveTransacao(data: any) {
   try {
-    const idRaw = formData.get("id");
-    // Converte para número apenas se o ID existir (Edição)
-    const id = idRaw && idRaw !== "null" && idRaw !== "" ? Number(idRaw) : null;
+    const empresaId = 1; // Ajuste conforme a sessão do usuário
 
-    // Processa valor e data
-    const valorRaw = formData.get("valor") as string;
-    const dataRaw = formData.get("data") as string;
-    
-    const valorLimpo = parseCurrency(valorRaw);
-    const dataIso = dataRaw ? new Date(`${dataRaw}T00:00:00`) : new Date();
-
+    // Formata o objeto para o padrão do banco
     const payload = {
-      descricao: formData.get("descricao") as string,
-      // valor: valorLimpo,
-      // data: dataIso,
-      // outros campos...
+      empresaId,
+      descricao: data.descricao,
+      tipo: data.tipo,
+      categoria: data.categoria,
+      valor: data.valor,
+      // Adiciona hora para evitar problemas de fuso horário voltando 1 dia
+      data: new Date(data.data + "T12:00:00Z"), 
+      status: data.status
     };
 
-    // Modelo fluxoCaixa não existe no schema - comentado
-    // if (id) {
-    //   // Se houver ID, realiza a atualização
-    //   await prisma.fluxoCaixa.update({
-    //     where: { id: id },
-    //     data: payload
-    //   });
-    // } else {
-    //   // Se não houver, cria um novo
-    //   await prisma.fluxoCaixa.create({
-    //     data: { ...payload, empresaId: 1 }
-    //   });
-    // }
-    
-    revalidatePath('/system/financeiro/fluxo');
+    if (data.id) {
+      // --- LÓGICA DE EDIÇÃO (UPDATE) ---
+      // Se tem ID, atualiza o registro existente
+      await prisma.fluxoCaixa.update({
+        where: { id: Number(data.id) },
+        data: payload
+      });
+    } else {
+      // --- LÓGICA DE NOVO CADASTRO (CREATE) ---
+      // Se não tem ID, cria um novo
+      await prisma.fluxoCaixa.create({
+        data: payload
+      });
+    }
+
+    revalidatePath('/system/financeiro/fluxo-caixa'); // Atualiza a tela 
     return { success: true };
   } catch (error) {
-    return { success: false, error: "Erro de banco de dados. Verifique os campos." };
+    console.error("Erro ao salvar:", error);
+    return { success: false, error: "Erro ao salvar no banco." };
   }
 }
-/**
- * Função unificada para excluir lançamentos com trava de segurança por empresa.
- */
-export async function deleteLancamento(id: number | string) {
+
+// Deleta
+export async function deleteTransacao(id: number) {
   try {
-    const empresaId = 1;
-
-    // Modelo fluxoCaixa não existe no schema - comentado
-    // const deleted = await prisma.fluxoCaixa.deleteMany({
-    //   where: { 
-    //     id: Number(id),
-    //     empresaId: empresaId 
-    //   }
-    // });
-
-    // if (deleted.count === 0) {
-    //   return { success: false, error: "Registro não encontrado ou sem permissão." };
-    // }
-
-    revalidatePath('/system/financeiro/fluxo');
-    revalidatePath('/system/financeiro/pagar');
-    revalidatePath('/system/financeiro/receber');
-    
+    await prisma.fluxoCaixa.delete({
+      where: { id: Number(id) }
+    });
+    revalidatePath('/system/financeiro/fluxo-caixa');
     return { success: true };
-
   } catch (error) {
-    console.error("Erro ao excluir:", error);
-    return { success: false, error: "Erro técnico ao excluir o lançamento." };
+    console.error("Erro ao deletar:", error);
+    return { success: false };
   }
 }
-
-// --- ALIASES PARA COMPATIBILIDADE ---
-export const salvarConta = saveLancamento;
-export const salvarContaReceber = saveLancamento;
-export const excluirConta = deleteLancamento;
-export const excluirContaReceber = deleteLancamento;
-export const deleteConta = deleteLancamento;

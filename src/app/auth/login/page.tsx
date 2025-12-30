@@ -7,7 +7,7 @@ import {
   Mail, Lock, ArrowRight, Loader2, 
   Eye, EyeOff, CheckCircle2, AlertTriangle 
 } from "lucide-react";
-// Importe a action que criamos no passo anterior
+
 import { loginUser } from "@/app/actions/auth";
 
 export default function LoginPage() {
@@ -17,7 +17,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
-  // Adicione este estado para exibir erros do banco de dados
+ 
   const [errorMessage, setErrorMessage] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
