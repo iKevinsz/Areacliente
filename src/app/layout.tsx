@@ -1,5 +1,5 @@
 import "./globals.css";
-// Se estiver usando fontes do Google, configure aqui, senão remova a importação
+
 import { Inter } from "next/font/google";
 
 const inter = Inter({ subsets: ["latin"] });

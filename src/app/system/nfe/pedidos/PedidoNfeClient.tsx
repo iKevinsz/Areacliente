@@ -29,6 +29,10 @@ export default function PedidosNfeClient({ initialPedidos }: PedidosNfeClientPro
   
   const [selectedPedido, setSelectedPedido] = useState<PedidoNfeDTO | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  
+  // NOVO ESTADO: Controle de atualização global Sefaz
+  const [isUpdating, setIsUpdating] = useState(false);
+  
   const [feedback, setFeedback] = useState<{type: 'success'|'error', msg: string} | null>(null);
 
   // Filtros
@@ -47,7 +51,24 @@ export default function PedidosNfeClient({ initialPedidos }: PedidosNfeClientPro
   const totalAutorizadas = pedidos.filter(p => p.status === 'autorizada').length;
   const totalErros = pedidos.filter(p => p.status === 'erro').length;
 
-  // Simulação de Emissão de NFe
+  // --- NOVA FUNÇÃO: Simulação de Atualização Sefaz ---
+  const handleUpdateSefaz = () => {
+    if (isUpdating) return;
+    setIsUpdating(true);
+
+    // Simula delay de rede (Conexão API Sefaz)
+    setTimeout(() => {
+        setIsUpdating(false);
+        setFeedback({ 
+            type: 'success', 
+            msg: 'Sincronização com Sefaz concluída! Status das notas atualizados.' 
+        });
+        // Aqui você poderia recarregar os dados do servidor se fosse real
+        // router.refresh(); 
+    }, 2500);
+  };
+
+  // Simulação de Emissão de NFe Individual
   const handleEmitirNfe = async () => {
     if (!selectedPedido) return;
     setIsGenerating(true);
@@ -93,8 +114,15 @@ export default function PedidosNfeClient({ initialPedidos }: PedidosNfeClientPro
           <h1 className="text-xl md:text-2xl font-black text-gray-800 flex items-center gap-2">Emissão de NFe</h1>
           <p className="text-gray-500 text-xs md:text-sm">Gerencie e emita notas fiscais dos seus pedidos.</p>
         </div>
-        <button className="bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-sm transition-all cursor-pointer">
-          <RefreshCw size={16} /> Atualizar Sefaz
+        
+        {/* BOTÃO ATUALIZADO COM A LÓGICA DE SIMULAÇÃO */}
+        <button 
+            onClick={handleUpdateSefaz}
+            disabled={isUpdating}
+            className="bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-sm transition-all cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
+        >
+          <RefreshCw size={16} className={isUpdating ? "animate-spin text-blue-600" : ""} /> 
+          {isUpdating ? 'Sincronizando...' : 'Atualizar Sefaz'}
         </button>
       </div>
 

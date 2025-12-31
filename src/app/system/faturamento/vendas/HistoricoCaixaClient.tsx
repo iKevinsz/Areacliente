@@ -34,9 +34,6 @@ const formatMoney = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'cu
 // Esta função garante que a data seja formatada de forma consistente
 const formatDateSafe = (dateStr: string) => {
     if (!dateStr) return "-";
-    // Criamos a data e garantimos que o formato seja consistente
-    // O segredo é evitar depender do locale do servidor vs cliente se possível, 
-    // mas aqui vamos usar uma abordagem de formatação padrão.
     try {
         const date = new Date(dateStr);
         return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + 
@@ -74,7 +71,7 @@ function ModalMovimentacoes({ caixa, onClose }: { caixa: CaixaHistorico, onClose
         <div className="bg-gray-50 border-b border-gray-100 p-4 md:p-5 flex justify-between items-center shrink-0">
           <div className="min-w-0">
             <h2 className="text-base md:text-lg font-bold text-gray-800 truncate">Caixa #{caixa.id}</h2>
-            {/* suppressHydrationWarning é a chave para evitar o erro em datas simples */}
+            {/* suppressHydrationWarning*/}
             <p className="text-xs text-gray-500 truncate" suppressHydrationWarning>
                 {caixa.operador} | {new Date(caixa.dataFechamento).toLocaleDateString('pt-BR')}
             </p>

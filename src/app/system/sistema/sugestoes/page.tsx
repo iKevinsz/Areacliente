@@ -6,7 +6,7 @@ import {
   Clock, CheckCircle2, X, Send, Check 
 } from "lucide-react";
 
-// Removido as imports de actions para não depender do banco
+
 // import { criarSugestao, toggleLikeAction } from "@/app/actions/sugestoes"; 
 
 interface Sugestao {

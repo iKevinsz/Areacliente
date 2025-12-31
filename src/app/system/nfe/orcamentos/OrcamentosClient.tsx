@@ -1,14 +1,18 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation'; // Importante para refresh
+// Importe as actions criadas no Passo 2
+import { createOrcamento, updateOrcamentoStatus } from '@/app/actions/orcamento'; 
 import { 
   Search, Plus, FileText, CheckCircle2, XCircle, Clock, 
-  Printer, ChevronRight, Calculator, User, Calendar, Loader2, ArrowRight
+  Printer, ChevronRight, Calculator, User, Calendar, Loader2, Trash2, Save, AlertTriangle, AlertCircle
 } from 'lucide-react';
 
-// --- TIPAGEM ---
+// --- TIPAGENS ---
+// Mantemos compatibilidade com o que vem do banco
 export interface ItemOrcamento {
-  id: number;
+  id: number; // No form de criação, usamos timestamp temporário, no banco é Int
   produto: string;
   qtd: number;
   valorUnit: number;
@@ -18,12 +22,12 @@ export interface ItemOrcamento {
 export interface OrcamentoDTO {
   id: number;
   cliente: string;
-  documento?: string; // CPF/CNPJ
-  dataEmissao: string;
-  validade: string;
+  documento?: string | null;
+  dataEmissao: Date | string;
+  validade: Date | string;
   total: number;
-  status: 'pendente' | 'aprovado' | 'rejeitado' | 'expirado';
-  observacao?: string;
+  status: string;
+  observacao?: string | null;
   itens: ItemOrcamento[];
 }
 
@@ -31,15 +35,153 @@ interface OrcamentosClientProps {
   initialOrcamentos: OrcamentoDTO[];
 }
 
+const INITIAL_NEW_ORCAMENTO = {
+  cliente: '',
+  documento: '',
+  validade: '',
+  observacao: '',
+  itens: [] as ItemOrcamento[]
+};
+
 export default function OrcamentosClient({ initialOrcamentos }: OrcamentosClientProps) {
+  // Recebe dados iniciais do Server Component (Banco de Dados)
   const [orcamentos, setOrcamentos] = useState<OrcamentoDTO[]>(initialOrcamentos);
+  const router = useRouter(); // Hook para recarregar a página
+
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'todos' | 'pendente' | 'aprovado' | 'rejeitado'>('todos');
   
+  // Estados de UI
   const [selectedOrcamento, setSelectedOrcamento] = useState<OrcamentoDTO | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showWarningModal, setShowWarningModal] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
-  // Filtros
+  const [formData, setFormData] = useState(INITIAL_NEW_ORCAMENTO);
+
+  // --- RECARREGAR DADOS ---
+  // Atualiza a lista local quando o Next.js revalidar os dados
+  React.useEffect(() => {
+    setOrcamentos(initialOrcamentos);
+  }, [initialOrcamentos]);
+
+  // --- MÁSCARA CPF/CNPJ (Mantida igual) ---
+  const handleDocumentoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length > 14) value = value.slice(0, 14);
+    if (value.length <= 11) {
+      value = value.replace(/(\d{3})(\d)/, '$1.$2');
+      value = value.replace(/(\d{3})(\d)/, '$1.$2');
+      value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    } else {
+      value = value.replace(/^(\d{2})(\d)/, '$1.$2');
+      value = value.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+      value = value.replace(/\.(\d{3})(\d)/, '.$1/$2');
+      value = value.replace(/(\d{4})(\d)/, '$1-$2');
+    }
+    setFormData(prev => ({ ...prev, documento: value }));
+  };
+
+  // --- LÓGICA DE ITENS (Mantida igual) ---
+  const handleAddItem = () => {
+    const newItem: ItemOrcamento = {
+      id: Date.now(), // ID temporário apenas para o frontend
+      produto: '',
+      qtd: 1,
+      valorUnit: 0,
+      total: 0
+    };
+    setFormData(prev => ({ ...prev, itens: [...prev.itens, newItem] }));
+  };
+
+  const handleRemoveItem = (id: number) => {
+    setFormData(prev => ({ ...prev, itens: prev.itens.filter(i => i.id !== id) }));
+  };
+
+  const handleUpdateItem = (id: number, field: keyof ItemOrcamento, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      itens: prev.itens.map(item => {
+        if (item.id === id) {
+          const updatedItem = { ...item, [field]: value };
+          if (field === 'qtd' || field === 'valorUnit') {
+            updatedItem.total = Number(updatedItem.qtd) * Number(updatedItem.valorUnit);
+          }
+          return updatedItem;
+        }
+        return item;
+      })
+    }));
+  };
+
+  const calculateTotalOrcamento = () => {
+    return formData.itens.reduce((acc, item) => acc + item.total, 0);
+  };
+
+  // --- SALVAR NO BANCO DE DADOS ---
+  const handleSaveOrcamento = async () => {
+    // Validações
+    if (!formData.cliente.trim()) {
+      setValidationError("Por favor, preencha o campo Nome do Cliente.");
+      return;
+    }
+    if (formData.itens.length === 0) {
+      setShowWarningModal(true);
+      return;
+    }
+
+    setIsProcessing(true);
+
+    // Preparar payload para a Server Action
+    const payload = {
+        cliente: formData.cliente,
+        documento: formData.documento,
+        validade: formData.validade || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        observacao: formData.observacao,
+        total: calculateTotalOrcamento(),
+        itens: formData.itens.map(i => ({
+            produto: i.produto,
+            qtd: i.qtd,
+            valorUnit: i.valorUnit,
+            total: i.total
+        }))
+    };
+
+    // Chamada ao Backend
+    const result = await createOrcamento(payload);
+
+    if (result.success) {
+        setIsCreating(false);
+        setFormData(INITIAL_NEW_ORCAMENTO);
+        router.refresh(); // Força o Next.js a buscar os dados novos no servidor
+    } else {
+        setValidationError("Erro ao salvar no banco de dados. Tente novamente.");
+    }
+    
+    setIsProcessing(false);
+  };
+
+  // --- ATUALIZAR STATUS NO BANCO ---
+  const handleStatusChange = async (novoStatus: 'aprovado' | 'rejeitado') => {
+    if (!selectedOrcamento) return;
+    setIsProcessing(true);
+
+    const result = await updateOrcamentoStatus(selectedOrcamento.id, novoStatus);
+
+    if (result.success) {
+        // Atualiza localmente para feedback instantâneo e depois faz refresh
+        setSelectedOrcamento(prev => prev ? { ...prev, status: novoStatus } : null);
+        router.refresh(); 
+    } else {
+        alert("Erro ao atualizar status");
+    }
+    
+    setIsProcessing(false);
+  };
+
+  // ... (RESTANTE DO CÓDIGO DE FORMATADORES E RENDERIZAÇÃO PERMANECE IGUAL) ...
+  
   const filteredOrcamentos = useMemo(() => {
     return orcamentos.filter(orc => {
       const matchSearch = orc.cliente.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -49,42 +191,29 @@ export default function OrcamentosClient({ initialOrcamentos }: OrcamentosClient
     });
   }, [orcamentos, searchTerm, filterStatus]);
 
-  // KPIs
   const totalPendentes = orcamentos.filter(o => o.status === 'pendente').reduce((acc, curr) => acc + curr.total, 0);
   const countAprovados = orcamentos.filter(o => o.status === 'aprovado').length;
   const countPendentes = orcamentos.filter(o => o.status === 'pendente').length;
 
-  // Ações Simuladas
-  const handleStatusChange = (novoStatus: 'aprovado' | 'rejeitado') => {
-    if (!selectedOrcamento) return;
-    setIsProcessing(true);
-
-    // AQUI ENTRARIA A SERVER ACTION: await updateOrcamentoStatus(selectedOrcamento.id, novoStatus);
-
-    setTimeout(() => {
-      setOrcamentos(prev => prev.map(o => o.id === selectedOrcamento.id ? { ...o, status: novoStatus } : o));
-      setIsProcessing(false);
-      setSelectedOrcamento(prev => prev ? { ...prev, status: novoStatus } : null);
-    }, 1000);
-  };
-
   const formatMoney = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-  const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('pt-BR');
+  const formatDate = (dateStr: string | Date) => {
+    if(!dateStr) return '-';
+    return new Date(dateStr).toLocaleDateString('pt-BR');
+  }
 
   const StatusBadge = ({ status }: { status: string }) => {
-    const styles = {
+    const styles: any = {
       pendente: 'bg-yellow-50 text-yellow-700 border-yellow-200',
       aprovado: 'bg-green-50 text-green-700 border-green-200',
       rejeitado: 'bg-red-50 text-red-700 border-red-200',
       expirado: 'bg-gray-100 text-gray-500 border-gray-200',
     };
-    const icons = {
+    const icons: any = {
       pendente: <Clock size={12} />,
       aprovado: <CheckCircle2 size={12} />,
       rejeitado: <XCircle size={12} />,
       expirado: <FileText size={12} />
     };
-    // @ts-ignore
     return <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border flex items-center gap-1.5 w-fit uppercase tracking-wide ${styles[status]}`}>{icons[status]} {status}</span>;
   };
 
@@ -97,7 +226,10 @@ export default function OrcamentosClient({ initialOrcamentos }: OrcamentosClient
           <h1 className="text-xl md:text-2xl font-black text-gray-800 flex items-center gap-2">Orçamentos</h1>
           <p className="text-gray-500 text-xs md:text-sm">Gerencie cotações e propostas comerciais.</p>
         </div>
-        <button className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-md transition-all text-sm font-bold active:scale-95 cursor-pointer">
+        <button 
+          onClick={() => setIsCreating(true)}
+          className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-md transition-all text-sm font-bold active:scale-95 cursor-pointer"
+        >
           <Plus size={18} /> Novo Orçamento
         </button>
       </div>
@@ -134,6 +266,7 @@ export default function OrcamentosClient({ initialOrcamentos }: OrcamentosClient
 
       {/* LISTAGEM */}
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+        {/* ... (Manter código da tabela igual ao anterior) ... */}
         {/* DESKTOP TABLE */}
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -207,7 +340,7 @@ export default function OrcamentosClient({ initialOrcamentos }: OrcamentosClient
         </div>
       </div>
 
-      {/* MODAL DE DETALHES */}
+      {/* MODAL DETALHES (Renderizado como antes) */}
       {selectedOrcamento && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95">
@@ -307,6 +440,219 @@ export default function OrcamentosClient({ initialOrcamentos }: OrcamentosClient
 
             </div>
           </div>
+        </div>
+      )}
+
+      {/* MODAL DE NOVO ORÇAMENTO (Usando formData e handleSaveOrcamento atualizados) */}
+      {isCreating && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-5">
+                
+                {/* Modal Header */}
+                <div className="bg-blue-600 px-6 py-4 flex justify-between items-center text-white">
+                    <div>
+                        <h2 className="text-lg font-bold flex items-center gap-2"><Plus size={20}/> Novo Orçamento</h2>
+                        <p className="text-xs text-blue-100 opacity-80">Preencha os dados para gerar a proposta.</p>
+                    </div>
+                    <button onClick={() => setIsCreating(false)} className="text-white/80 hover:bg-white/20 p-1.5 rounded-full cursor-pointer"><XCircle size={24} /></button>
+                </div>
+
+                {/* Modal Body */}
+                <div className="p-6 overflow-y-auto space-y-6 flex-1">
+                    
+                    {/* Dados do Cliente */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase">Nome do Cliente <span className="text-red-500">*</span></label>
+                            <input 
+                                type="text" 
+                                className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                placeholder="Ex: João Silva ou Empresa XYZ"
+                                value={formData.cliente}
+                                onChange={(e) => setFormData({...formData, cliente: e.target.value})}
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase">Documento (CPF / CNPJ)</label>
+                            <input 
+                                type="text" 
+                                maxLength={18}
+                                className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                placeholder="CPF ou CNPJ"
+                                value={formData.documento}
+                                onChange={handleDocumentoChange}
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase">Validade da Proposta</label>
+                            <input 
+                                type="date" 
+                                className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                value={formData.validade}
+                                onChange={(e) => setFormData({...formData, validade: e.target.value})}
+                            />
+                        </div>
+                    </div>
+
+                    <hr className="border-gray-100"/>
+
+                    {/* Itens */}
+                    <div>
+                        <div className="flex justify-between items-center mb-3">
+                            <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2"><FileText size={16}/> Itens / Serviços</h3>
+                            <button 
+                                onClick={handleAddItem}
+                                className="text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 transition-colors"
+                            >
+                                <Plus size={14}/> Adicionar Item
+                            </button>
+                        </div>
+
+                        <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50/30">
+                            {formData.itens.length === 0 ? (
+                                <div className="p-8 text-center text-gray-400 text-sm">
+                                    Nenhum item adicionado. Clique em "Adicionar Item" para começar.
+                                </div>
+                            ) : (
+                                <table className="w-full text-left text-sm">
+                                    <thead className="bg-gray-100 text-gray-500 text-[10px] uppercase font-bold">
+                                        <tr>
+                                            <th className="px-4 py-2 w-[40%]">Descrição</th>
+                                            <th className="px-4 py-2 w-[15%] text-center">Qtd</th>
+                                            <th className="px-4 py-2 w-[20%] text-right">Valor Unit.</th>
+                                            <th className="px-4 py-2 w-[20%] text-right">Total</th>
+                                            <th className="px-4 py-2 w-[5%]"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200 bg-white">
+                                        {formData.itens.map((item) => (
+                                            <tr key={item.id}>
+                                                <td className="px-2 py-2">
+                                                    <input 
+                                                        type="text" 
+                                                        placeholder="Nome do produto ou serviço"
+                                                        className="w-full p-1.5 border border-gray-200 rounded text-sm focus:border-blue-500 outline-none"
+                                                        value={item.produto}
+                                                        onChange={(e) => handleUpdateItem(item.id, 'produto', e.target.value)}
+                                                    />
+                                                </td>
+                                                <td className="px-2 py-2">
+                                                    <input 
+                                                        type="number" 
+                                                        min="1"
+                                                        className="w-full p-1.5 border border-gray-200 rounded text-sm text-center focus:border-blue-500 outline-none"
+                                                        value={item.qtd}
+                                                        onChange={(e) => handleUpdateItem(item.id, 'qtd', Number(e.target.value))}
+                                                    />
+                                                </td>
+                                                <td className="px-2 py-2">
+                                                    <input 
+                                                        type="number" 
+                                                        min="0"
+                                                        step="0.01"
+                                                        className="w-full p-1.5 border border-gray-200 rounded text-sm text-right focus:border-blue-500 outline-none"
+                                                        value={item.valorUnit}
+                                                        onChange={(e) => handleUpdateItem(item.id, 'valorUnit', Number(e.target.value))}
+                                                    />
+                                                </td>
+                                                <td className="px-4 py-2 text-right font-bold text-gray-700">
+                                                    {formatMoney(item.total)}
+                                                </td>
+                                                <td className="px-2 py-2 text-center">
+                                                    <button 
+                                                        onClick={() => handleRemoveItem(item.id)}
+                                                        className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded transition-colors"
+                                                    >
+                                                        <Trash2 size={16}/>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                            
+                            {/* Total Footer */}
+                            <div className="bg-gray-100 px-6 py-3 flex justify-end items-center gap-4 border-t border-gray-200">
+                                <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Total Estimado</span>
+                                <span className="text-xl font-black text-blue-700">{formatMoney(calculateTotalOrcamento())}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Observações */}
+                    <div className="space-y-1">
+                        <label className="text-xs font-bold text-gray-500 uppercase">Observações Internas</label>
+                        <textarea 
+                            rows={3}
+                            className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                            placeholder="Ex: Entrega prevista para semana que vem..."
+                            value={formData.observacao}
+                            onChange={(e) => setFormData({...formData, observacao: e.target.value})}
+                        />
+                    </div>
+                </div>
+
+                {/* Modal Footer Buttons */}
+                <div className="p-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+                    <button 
+                        onClick={() => setIsCreating(false)}
+                        className="px-6 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-bold hover:bg-gray-100 transition-colors text-sm"
+                    >
+                        Cancelar
+                    </button>
+                    <button 
+                        onClick={handleSaveOrcamento}
+                        disabled={isProcessing}
+                        className="px-6 py-2.5 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {isProcessing ? <Loader2 className="animate-spin" size={18}/> : <Save size={18}/>} 
+                        Salvar Orçamento
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
+
+      {/* --- MODAIS DE ERRO E AVISO --- */}
+      {showWarningModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="bg-white w-full max-w-sm rounded-2xl shadow-xl overflow-hidden p-6 animate-in zoom-in-95 flex flex-col items-center text-center">
+                <div className="w-12 h-12 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center mb-4">
+                    <AlertTriangle size={24} />
+                </div>
+                <h3 className="text-lg font-black text-gray-800 mb-2">Atenção!</h3>
+                <p className="text-sm text-gray-500 mb-6 leading-relaxed">
+                    Você não pode salvar um orçamento vazio.<br/>
+                    Por favor, adicione pelo menos um item ou serviço antes de continuar.
+                </p>
+                <button 
+                    onClick={() => setShowWarningModal(false)}
+                    className="w-full py-2.5 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 transition-colors"
+                >
+                    Entendi, vou adicionar
+                </button>
+            </div>
+        </div>
+      )}
+
+      {validationError && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="bg-white w-full max-w-sm rounded-2xl shadow-xl overflow-hidden p-6 animate-in zoom-in-95 flex flex-col items-center text-center">
+                <div className="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4">
+                    <AlertCircle size={24} />
+                </div>
+                <h3 className="text-lg font-black text-gray-800 mb-2">Campo Obrigatório</h3>
+                <p className="text-sm text-gray-500 mb-6 leading-relaxed">
+                    {validationError}
+                </p>
+                <button 
+                    onClick={() => setValidationError(null)}
+                    className="w-full py-2.5 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-colors shadow-lg shadow-red-200"
+                >
+                    OK, Entendi
+                </button>
+            </div>
         </div>
       )}
 

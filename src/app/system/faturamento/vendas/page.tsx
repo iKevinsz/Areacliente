@@ -1,5 +1,5 @@
 import { getHistoricoCaixas } from '@/app/actions/caixa';
-import HistoricoCaixaClient from './HistoricoCaixaClient'; // Ajuste o caminho conforme sua estrutura
+import HistoricoCaixaClient from './HistoricoCaixaClient'; 
 
 export default async function Page() {
   const empresaId = 1; // Substituir pelo ID da sessão real no futuro

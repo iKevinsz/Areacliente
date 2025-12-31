@@ -11,7 +11,7 @@ export default function DownloadsPage() {
       descricao: "Sistema para Ponto de Venda e Gestão Empresarial.",
       tipo: "desktop",
       imagemUrl: "/img/logo-datacaixa.png", 
-      // Adicionado https:// para garantir o redirecionamento externo correto
+      
       urlDownload: "https://datacaixa.com.br/downloads/setup_datacaixa.exe" 
     },
     {
