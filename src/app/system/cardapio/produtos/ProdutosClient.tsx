@@ -24,7 +24,7 @@ export default function ProdutosClient({ produtos, gruposDisponiveis }: Produtos
     image: dbProduct.imagem || '',
     cost: 0, 
     price: Number(dbProduct.preco),
-    hasVariations: dbProduct.variacoes && dbProduct.variacoes.length > 0, 
+    hasVariations: Boolean(dbProduct.variacoes && dbProduct.variacoes.length > 0), 
     variations: dbProduct.variacoes ? dbProduct.variacoes.map(v => ({ id: v.id.toString(), name: v.nome, price: Number(v.preco), cost: 0 })) : [],
     active: dbProduct.ativo,
     allowsComplements: dbProduct.permiteComplemento || false,
