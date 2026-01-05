@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Edit3, Trash2, Search, Package, Plus, X, Save, Upload, AlertTriangle, SlidersHorizontal, ArrowRightLeft, CheckCircle, PlusCircle, AlertCircle } from 'lucide-react';
 import { saveProduct, deleteProduct } from '@/app/actions'; 
 
-// ... (Interfaces permanecem iguais)
+
 interface Variation { id: string; name: string; price: number; cost: number; }
 interface Product { id: number; description: string; group: string; image: string; cost: number; price: number; hasVariations: boolean; variations: Variation[]; active: boolean; allowsComplements: boolean; isAvailableOnline: boolean; isVisibleOnline: boolean; }
 interface DatabaseProduct { id: number; nome: string; descricao: string | null; preco: number; categoria: string | null; estoque: number; imagem: string | null; ativo: boolean; permiteComplemento?: boolean; visivelOnline?: boolean; grupoId: number | null; criadoEm: Date; atualizadoEm: Date; variacoes?: { id: number; nome: string; preco: number }[]; }

@@ -8,7 +8,7 @@ export async function getHistoricoCaixas(empresaId: number) {
     const caixas = await prisma.caixa.findMany({
       where: { 
         empresaId: empresaId,
-        // status: 'FECHADO' // Descomente se quiser ver apenas fechados
+        // status: 'FECHADO' 
       },
       orderBy: { dataAbertura: 'desc' },
       take: 50 // Limita para não pesar a página
@@ -22,7 +22,7 @@ export async function getHistoricoCaixas(empresaId: number) {
       saldoInicial: Number(c.saldoInicial),
       total: Number(c.saldoFinal || 0),
       quebra: Number(c.quebraDeCaixa || 0),
-      qtdVendas: 0 // Se quiser contar pedidos: await prisma.pedido.count({ where: { caixaId: c.id } })
+      qtdVendas: 0 
     }));
   } catch (error) {
     console.error("Erro ao buscar histórico:", error);

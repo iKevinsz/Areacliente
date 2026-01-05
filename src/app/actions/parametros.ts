@@ -15,7 +15,7 @@ export async function salvarParametros(empresaId: number, data: any) {
         cpfObrigatorio: data.geral.cpfObrigatorio,
         cepObrigatorio: data.geral.cepObrigatorio,
         calculoPreco: data.geral.calculoPreco,
-        valorMinimo: Number(data.geral.valorMinimo || 0), // Adicionado conversão numérica
+        valorMinimo: Number(data.geral.valorMinimo || 0), 
         
         configPagamento: {
           opcoes: data.pagamento.opcoes,

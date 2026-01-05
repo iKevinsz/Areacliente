@@ -8,7 +8,7 @@ import {
   FaTrash, FaTimes, FaMapMarkedAlt, FaCity, 
   FaMotorcycle, FaPercentage, FaMoneyBill, FaGlobe, 
   FaQrcode, FaRegClock, FaCalendarAlt, FaPlug, 
-  FaSync, FaShoppingBag, FaLink, FaInfoCircle, FaCalculator, FaUtensils, FaTag
+  FaSync, FaShoppingBag, FaLink, FaInfoCircle, FaCalculator, FaUtensils, FaTag, FaCopy
 } from 'react-icons/fa';
 
 // --- COMPONENTES AUXILIARES SIMPLES (Para garantir que funcionem se não estiverem importados) ---
