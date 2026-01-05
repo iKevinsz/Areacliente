@@ -2,9 +2,8 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation'; 
-import { Edit3, Trash2, Search, Package, Plus, X, Save, Upload, AlertTriangle, SlidersHorizontal, ArrowRightLeft, CheckCircle, PlusCircle, AlertCircle } from 'lucide-react';
+import { Edit3, Trash2, Search, Package, Plus, X, Save, Upload, AlertTriangle, SlidersHorizontal, ArrowRightLeft, CheckCircle, PlusCircle, AlertCircle, LayoutGrid, List, Filter } from 'lucide-react';
 import { saveProduct, deleteProduct } from '@/app/actions'; 
-
 
 interface Variation { id: string; name: string; price: number; cost: number; }
 interface Product { id: number; description: string; group: string; image: string; cost: number; price: number; hasVariations: boolean; variations: Variation[]; active: boolean; allowsComplements: boolean; isAvailableOnline: boolean; isVisibleOnline: boolean; }
@@ -35,7 +34,12 @@ export default function ProdutosClient({ produtos, gruposDisponiveis }: Produtos
   const [products, setProducts] = useState<Product[]>(convertedProducts);
   useEffect(() => { setProducts(convertedProducts); }, [produtos]);
 
+  // STATES DE CONTROLE DE TELA
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all'); // NOVO FILTRO
   const [searchTerm, setSearchTerm] = useState('');
+
+  // STATES DOS MODAIS
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
@@ -205,40 +209,140 @@ export default function ProdutosClient({ produtos, gruposDisponiveis }: Produtos
     setIsLoading(false);
   };
 
-  const filteredProducts = products.filter(p => p.description.toLowerCase().includes(searchTerm.toLowerCase()) || p.group.toLowerCase().includes(searchTerm.toLowerCase()));
+  // --- LÓGICA DE FILTRAGEM ATUALIZADA ---
+  const filteredProducts = products.filter(p => {
+    const matchesSearch = p.description.toLowerCase().includes(searchTerm.toLowerCase()) || p.group.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    let matchesStatus = true;
+    if (filterStatus === 'active') matchesStatus = p.active === true;
+    if (filterStatus === 'inactive') matchesStatus = p.active === false;
+
+    return matchesSearch && matchesStatus;
+  });
 
   return (
-    <div className="p-4 md:p-10 font-sans min-h-full relative bg-gray-50/50">
+    <div className="p-4 md:p-8 font-sans min-h-full relative bg-gray-50/50">
       
-      {/* HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 md:mb-8 gap-4">
-        <div><h1 className="text-2xl font-bold text-gray-800">Catálogo de Produtos</h1><p className="text-gray-500 text-sm">Gerencie preços, variações e estoque.</p></div>
-        <div className="flex gap-2 w-full md:w-auto">
-          <div className="relative w-full md:w-64"><Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" /><input type="text" placeholder="Buscar..." className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}/></div>
-          <button onClick={handleOpenNew} className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors shadow-sm shrink-0 cursor-pointer"><Plus size={20} /> <span className="hidden sm:inline font-medium text-sm">Novo Produto</span></button>
+      {/* HEADER E CONTROLES */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-8 gap-6">
+        
+        {/* Título */}
+        <div>
+            <h1 className="text-2xl font-bold text-gray-800 tracking-tight">Catálogo de Produtos</h1>
+            <p className="text-gray-500 text-sm mt-1">Gerencie preços, variações e estoque.</p>
+        </div>
+        
+        {/* Barra de Ferramentas */}
+        <div className="w-full lg:w-auto flex flex-col md:flex-row gap-3">
+          
+          {/* Grupo Visualização */}
+          <div className="bg-white p-1 rounded-lg border border-gray-200 flex shadow-sm self-start md:self-auto shrink-0">
+             <button onClick={() => setViewMode('grid')} className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-blue-50 text-blue-600 shadow-sm' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`} title="Visualização em Grade">
+                 <LayoutGrid size={20}/>
+             </button>
+             <button onClick={() => setViewMode('list')} className={`p-2 rounded-md transition-all ${viewMode === 'list' ? 'bg-blue-50 text-blue-600 shadow-sm' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`} title="Visualização em Lista">
+                 <List size={20}/>
+             </button>
+          </div>
+
+          {/* Grupo Filtros */}
+          <div className="flex flex-col md:flex-row gap-3 flex-1">
+              
+              {/* Dropdown Status */}
+              <div className="relative shrink-0 md:w-40">
+                <Filter className="absolute left-3 top-2.5 h-4 w-4 text-gray-400 pointer-events-none" />
+                <select 
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value as any)}
+                    className="w-full pl-10 pr-8 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm appearance-none cursor-pointer shadow-sm text-gray-700 font-medium"
+                >
+                    <option value="all">Todos</option>
+                    <option value="active">Ativos</option>
+                    <option value="inactive">Inativos</option>
+                </select>
+                <div className="absolute right-3 top-3 pointer-events-none border-l-4 border-l-transparent border-t-4 border-t-gray-400 border-r-4 border-r-transparent"></div>
+              </div>
+
+              {/* Busca */}
+              <div className="relative w-full md:w-64 lg:w-72">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                  <input 
+                    type="text" 
+                    placeholder="Buscar por nome ou categoria..." 
+                    className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm shadow-sm" 
+                    value={searchTerm} 
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+              </div>
+          </div>
+
+          {/* Botão Novo */}
+          <button onClick={handleOpenNew} className="flex items-center justify-center gap-2 bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors shadow-sm shrink-0 cursor-pointer font-medium text-sm">
+            <Plus size={18} /> 
+            <span>Novo Produto</span>
+          </button>
+
         </div>
       </div>
 
-      {/* GRID */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-        {filteredProducts.map((product) => (
-          <div key={product.id} className={`group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col h-full ${!product.active ? 'opacity-70 grayscale-[0.5]' : ''}`}>
-            <div className="w-full h-56 relative overflow-hidden bg-gray-100 shrink-0">
-              {product.image ? <img src={product.image} alt={product.description} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" /> : <div className="h-full w-full flex items-center justify-center text-gray-300"><Package size={48} /></div>}
-              <div className="absolute top-3 left-3"><span className="px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-white/90 text-blue-600 shadow-sm backdrop-blur-sm">{product.group}</span></div>
-              <div className="absolute top-3 right-3"><span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider shadow-sm backdrop-blur-sm ${product.active ? 'bg-green-500/90 text-white' : 'bg-red-500/90 text-white'}`}>{product.active ? 'Ativo' : 'Inativo'}</span></div>
-              <div className="absolute bottom-3 left-3">{product.hasVariations && <div className="bg-blue-600/90 text-white text-[10px] px-2 py-1 rounded-lg shadow-lg flex items-center gap-1.5 font-bold backdrop-blur-sm uppercase"><ArrowRightLeft size={12} /> Variações</div>}</div>
+      {/* --- RENDERIZAÇÃO CONDICIONAL (GRID OU LISTA) --- */}
+      {viewMode === 'grid' ? (
+        // MODO GRID
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 animate-in fade-in duration-500">
+            {filteredProducts.map((product) => (
+            <div key={product.id} className={`group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col h-full ${!product.active ? 'opacity-70 grayscale-[0.5]' : ''}`}>
+                <div className="w-full h-56 relative overflow-hidden bg-gray-100 shrink-0">
+                {product.image ? <img src={product.image} alt={product.description} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" /> : <div className="h-full w-full flex items-center justify-center text-gray-300"><Package size={48} /></div>}
+                <div className="absolute top-3 left-3"><span className="px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-white/90 text-blue-600 shadow-sm backdrop-blur-sm">{product.group}</span></div>
+                <div className="absolute top-3 right-3"><span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider shadow-sm backdrop-blur-sm ${product.active ? 'bg-green-500/90 text-white' : 'bg-red-500/90 text-white'}`}>{product.active ? 'Ativo' : 'Inativo'}</span></div>
+                <div className="absolute bottom-3 left-3">{product.hasVariations && <div className="bg-blue-600/90 text-white text-[10px] px-2 py-1 rounded-lg shadow-lg flex items-center gap-1.5 font-bold backdrop-blur-sm uppercase"><ArrowRightLeft size={12} /> Variações</div>}</div>
+                </div>
+                <div className="p-4 flex flex-col flex-1">
+                <h3 className="font-bold text-gray-800 text-base mb-4 line-clamp-2 leading-tight uppercase" title={product.description}>{product.description}</h3>
+                <div className="mt-auto flex justify-between items-end gap-2">{getPriceDisplay(product)}<div className="flex gap-1"><button onClick={() => handleOpenEdit(product)} className="p-2.5 text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white rounded-xl transition-all duration-200 cursor-pointer"><Edit3 size={16} /></button><button onClick={() => { setIsDeleteModalOpen(true); setIdToDelete(product.id); }} className="p-2.5 text-red-600 bg-red-50 hover:bg-red-600 hover:text-white rounded-xl transition-all duration-200 cursor-pointer"><Trash2 size={16} /></button></div></div>
+                </div>
             </div>
-            <div className="p-4 flex flex-col flex-1">
-              
-              {/* --- ALTERAÇÃO AQUI: ADICIONADA CLASSE 'uppercase' --- */}
-              <h3 className="font-bold text-gray-800 text-base mb-4 line-clamp-2 leading-tight uppercase" title={product.description}>{product.description}</h3>
-              
-              <div className="mt-auto flex justify-between items-end gap-2">{getPriceDisplay(product)}<div className="flex gap-1"><button onClick={() => handleOpenEdit(product)} className="p-2.5 text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white rounded-xl transition-all duration-200 cursor-pointer"><Edit3 size={16} /></button><button onClick={() => { setIsDeleteModalOpen(true); setIdToDelete(product.id); }} className="p-2.5 text-red-600 bg-red-50 hover:bg-red-600 hover:text-white rounded-xl transition-all duration-200 cursor-pointer"><Trash2 size={16} /></button></div></div>
-            </div>
-          </div>
-        ))}
-      </div>
+            ))}
+        </div>
+      ) : (
+        // MODO LISTA
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col animate-in fade-in duration-500">
+            {filteredProducts.map((product) => (
+                <div key={product.id} className={`flex flex-col sm:flex-row sm:items-center p-4 border-b border-gray-50 hover:bg-gray-50 gap-4 transition-colors ${!product.active ? 'opacity-70 grayscale-[0.5]' : ''}`}>
+                    
+                    {/* Imagem e Badge Grupo */}
+                    <div className="relative shrink-0 w-full sm:w-20 h-20 bg-gray-100 rounded-xl overflow-hidden">
+                        {product.image ? <img src={product.image} alt={product.description} className="w-full h-full object-cover" /> : <div className="h-full w-full flex items-center justify-center text-gray-300"><Package size={24} /></div>}
+                        <div className="absolute bottom-0 left-0 right-0 bg-black/40 text-white text-[9px] text-center font-bold py-0.5 uppercase backdrop-blur-sm">{product.group}</div>
+                    </div>
+
+                    {/* Informações */}
+                    <div className="flex-1 flex flex-col justify-center gap-1">
+                        <div className="flex items-center gap-2">
+                             <h3 className="font-bold text-gray-800 text-base uppercase leading-tight">{product.description}</h3>
+                             {product.hasVariations && <span className="bg-blue-100 text-blue-700 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wide border border-blue-200">Variações</span>}
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${product.active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{product.active ? 'Ativo' : 'Inativo'}</span>
+                            {!product.isVisibleOnline && <span className="text-[10px] text-gray-400 font-medium bg-gray-100 px-2 py-0.5 rounded">Oculto Online</span>}
+                        </div>
+                    </div>
+
+                    {/* Preço e Ações */}
+                    <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-6 mt-2 sm:mt-0">
+                        <div className="text-right">
+                             {getPriceDisplay(product)}
+                        </div>
+                        <div className="flex gap-2">
+                            <button onClick={() => handleOpenEdit(product)} className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white rounded-lg transition-all duration-200 cursor-pointer"><Edit3 size={18} /></button>
+                            <button onClick={() => { setIsDeleteModalOpen(true); setIdToDelete(product.id); }} className="p-2 text-red-600 bg-red-50 hover:bg-red-600 hover:text-white rounded-lg transition-all duration-200 cursor-pointer"><Trash2 size={18} /></button>
+                        </div>
+                    </div>
+                </div>
+            ))}
+            {filteredProducts.length === 0 && <div className="p-10 text-center text-gray-400">Nenhum produto encontrado com os filtros atuais.</div>}
+        </div>
+      )}
 
       {/* MODAL DE PRODUTO */}
       {isModalOpen && (
@@ -252,8 +356,6 @@ export default function ProdutosClient({ produtos, gruposDisponiveis }: Produtos
               <div className="space-y-4 mb-6">
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Produto *</label>
-                    
-                    {/* --- ALTERAÇÃO AQUI: ADICIONADA CLASSE 'uppercase' AO INPUT PARA UX --- */}
                     <input type="text" className="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 uppercase" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
                 
                 </div>

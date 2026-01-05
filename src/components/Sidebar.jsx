@@ -233,7 +233,7 @@ const Sidebar = ({ open, setOpen }) => {
             </div>
             
             <h1 className={`text-[#00254d] font-bold text-xl whitespace-nowrap transition-all duration-200 origin-left ${!open ? "opacity-0 w-0 scale-0 overflow-hidden" : "opacity-100 w-auto scale-100"}`}>
-              Área de Cliente
+              Datacaixa Web
             </h1>
           </div>
 

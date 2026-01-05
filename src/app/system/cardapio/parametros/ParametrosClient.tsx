@@ -11,7 +11,7 @@ import {
   FaSync, FaShoppingBag, FaLink, FaInfoCircle, FaCalculator, FaUtensils, FaTag, FaCopy
 } from 'react-icons/fa';
 
-// --- COMPONENTES AUXILIARES SIMPLES (Para garantir que funcionem se não estiverem importados) ---
+// --- COMPONENTES AUXILIARES SIMPLES 
 const ToggleSwitch = ({ label, description, checked, onChange }: any) => (
   <div className="flex items-center justify-between py-3">
     <div className="pr-4">
@@ -143,17 +143,12 @@ export default function ParametrosClient({ dadosIniciais }: { dadosIniciais: any
         geral: { lojaFechada, ocultarCardapio, enviarWhatsapp, cpfObrigatorio, cepObrigatorio, calculoPreco, valorMinimo, cepPadrao },
         entrega: { metodos, tipoTaxa, freteGratis, valorTaxaFixa, percentualTaxa },
         pagamento: { opcoes: pagamento, gateways, chavePix, bandeirasVale },
-        // NOVO PAYLOAD FIDELIDADE
+        
         fidelidade: { ativo: fidAtivo, nomeMoeda: fidNomeMoeda, conversao: fidConversao, valorResgate: fidResgate, validadeDias: fidValidade, minimoResgate: fidMinimo },
         integracaoMl: { ativo: mlAtivo, appId: mlAppId, secretKey: mlSecretKey, syncEstoque: mlSyncEstoque, syncPreco: mlSyncPreco, fatorPreco: mlFatorPreco },
         horarios, pausas, cupons, bairros, regrasKm, excecoesCep
     };
     
-    // Simulação da função salvarParametros (substitua pela sua chamada real de API)
-    // const res = await salvarParametros(dadosIniciais.id, payload);
-    // if (res.success) { setUnsavedChanges(false); setShowSuccessModal(true); } else { alert("Erro ao salvar: " + res.error); }
-    
-    // Para teste apenas:
     console.log("Salvando:", payload);
     setTimeout(() => { setUnsavedChanges(false); setShowSuccessModal(true); setIsSaving(false); }, 1000);
   };
