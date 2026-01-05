@@ -35,8 +35,8 @@ export default function ProdutosClient({ produtos, gruposDisponiveis }: Produtos
   useEffect(() => { setProducts(convertedProducts); }, [produtos]);
 
   // STATES DE CONTROLE DE TELA
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all'); // NOVO FILTRO
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list'); // Padrão Lista
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
   // STATES DOS MODAIS
@@ -132,18 +132,7 @@ export default function ProdutosClient({ produtos, gruposDisponiveis }: Produtos
   const handleOpenNew = () => {
     setEditingId(null);
     setFormData({ 
-        id: 0, 
-        description: '', 
-        group: '', 
-        image: '', 
-        cost: 0, 
-        price: 0, 
-        hasVariations: false, 
-        variations: [], 
-        active: true, 
-        allowsComplements: false, 
-        isAvailableOnline: true, 
-        isVisibleOnline: true 
+        id: 0, description: '', group: '', image: '', cost: 0, price: 0, hasVariations: false, variations: [], active: true, allowsComplements: false, isAvailableOnline: true, isVisibleOnline: true 
     });
     setIsModalOpen(true);
   };
@@ -156,67 +145,33 @@ export default function ProdutosClient({ produtos, gruposDisponiveis }: Produtos
 
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-
     let submissionData = { ...formData };
 
-    if (!submissionData.description.trim()) { 
-        setValidationMessage("O nome do produto é obrigatório."); 
-        setIsValidationModalOpen(true); 
-        return; 
-    }
-
-    if (!submissionData.group) {
-        setValidationMessage("Por favor, selecione uma Categoria para o produto.");
-        setIsValidationModalOpen(true);
-        return;
-    }
+    if (!submissionData.description.trim()) { setValidationMessage("O nome do produto é obrigatório."); setIsValidationModalOpen(true); return; }
+    if (!submissionData.group) { setValidationMessage("Por favor, selecione uma Categoria para o produto."); setIsValidationModalOpen(true); return; }
     
     if (submissionData.hasVariations && submissionData.variations.length === 0) {
         submissionData.hasVariations = false;
-        if (!submissionData.price || submissionData.price <= 0) {
-            setValidationMessage("Você removeu todas as variações. Por favor, defina um Preço Único para o produto.");
-            setFormData(prev => ({ ...prev, hasVariations: false })); 
-            setIsValidationModalOpen(true);
-            return;
-        }
+        if (!submissionData.price || submissionData.price <= 0) { setValidationMessage("Você removeu todas as variações. Por favor, defina um Preço Único para o produto."); setFormData(prev => ({ ...prev, hasVariations: false })); setIsValidationModalOpen(true); return; }
     }
-
     if (submissionData.hasVariations) {
-        const hasInvalidVariation = submissionData.variations.some(v => !v.name || v.name === "" || isNaN(v.price));
-        if (hasInvalidVariation) {
-            setValidationMessage("Todas as variações precisam ter um Tipo/Tamanho selecionado e um Preço definido.");
-            setIsValidationModalOpen(true);
-            return;
-        }
+        if (submissionData.variations.some(v => !v.name || v.name === "" || isNaN(v.price))) { setValidationMessage("Todas as variações precisam ter um Tipo/Tamanho selecionado e um Preço definido."); setIsValidationModalOpen(true); return; }
     } else {
-        if (submissionData.price <= 0) {
-            setValidationMessage("Defina um preço de venda maior que zero.");
-            setIsValidationModalOpen(true);
-            return;
-        }
+        if (submissionData.price <= 0) { setValidationMessage("Defina um preço de venda maior que zero."); setIsValidationModalOpen(true); return; }
     }
 
     setIsLoading(true);
     const result = await saveProduct(submissionData);
-
-    if (result.success) {
-        setIsModalOpen(false);
-        setIsSuccessModalOpen(true);
-        router.refresh(); 
-    } else {
-        alert("Erro ao salvar produto.");
-    }
+    if (result.success) { setIsModalOpen(false); setIsSuccessModalOpen(true); router.refresh(); } else { alert("Erro ao salvar produto."); }
     setIsLoading(false);
   };
 
-  // --- LÓGICA DE FILTRAGEM ATUALIZADA ---
+  // --- LÓGICA DE FILTRAGEM ---
   const filteredProducts = products.filter(p => {
     const matchesSearch = p.description.toLowerCase().includes(searchTerm.toLowerCase()) || p.group.toLowerCase().includes(searchTerm.toLowerCase());
-    
     let matchesStatus = true;
     if (filterStatus === 'active') matchesStatus = p.active === true;
     if (filterStatus === 'inactive') matchesStatus = p.active === false;
-
     return matchesSearch && matchesStatus;
   });
 
@@ -227,60 +182,64 @@ export default function ProdutosClient({ produtos, gruposDisponiveis }: Produtos
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-8 gap-6">
         
         {/* Título */}
-        <div>
+        <div className="shrink-0">
             <h1 className="text-2xl font-bold text-gray-800 tracking-tight">Catálogo de Produtos</h1>
             <p className="text-gray-500 text-sm mt-1">Gerencie preços, variações e estoque.</p>
         </div>
         
-        {/* Barra de Ferramentas */}
-        <div className="w-full lg:w-auto flex flex-col md:flex-row gap-3">
+        {/* Barra de Ferramentas (Layout Ajustado: Busca -> Filtro -> Toggle -> CTA) */}
+        <div className="w-full flex flex-col md:flex-row gap-3 items-center">
           
-          {/* Grupo Visualização */}
-          <div className="bg-white p-1 rounded-lg border border-gray-200 flex shadow-sm self-start md:self-auto shrink-0">
-             <button onClick={() => setViewMode('grid')} className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-blue-50 text-blue-600 shadow-sm' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`} title="Visualização em Grade">
-                 <LayoutGrid size={20}/>
-             </button>
-             <button onClick={() => setViewMode('list')} className={`p-2 rounded-md transition-all ${viewMode === 'list' ? 'bg-blue-50 text-blue-600 shadow-sm' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`} title="Visualização em Lista">
-                 <List size={20}/>
-             </button>
-          </div>
+            {/* 1. BUSCA (Primária - Ocupa Espaço) */}
+            <div className="relative w-full md:flex-1">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                <input 
+                type="text" 
+                placeholder="Buscar por nome ou categoria..." 
+                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm shadow-sm transition-all" 
+                value={searchTerm} 
+                onChange={(e) => setSearchTerm(e.target.value)}
+                />
+            </div>
 
-          {/* Grupo Filtros */}
-          <div className="flex flex-col md:flex-row gap-3 flex-1">
-              
-              {/* Dropdown Status */}
-              <div className="relative shrink-0 md:w-40">
+            {/* 2. FILTRO (Contextual - Menor) */}
+            <div className="relative w-full md:w-32 shrink-0">
                 <Filter className="absolute left-3 top-2.5 h-4 w-4 text-gray-400 pointer-events-none" />
                 <select 
                     value={filterStatus}
                     onChange={(e) => setFilterStatus(e.target.value as any)}
-                    className="w-full pl-10 pr-8 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm appearance-none cursor-pointer shadow-sm text-gray-700 font-medium"
+                    className="w-full pl-9 pr-8 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm appearance-none cursor-pointer shadow-sm text-gray-700 font-medium transition-all"
                 >
                     <option value="all">Todos</option>
                     <option value="active">Ativos</option>
                     <option value="inactive">Inativos</option>
                 </select>
                 <div className="absolute right-3 top-3 pointer-events-none border-l-4 border-l-transparent border-t-4 border-t-gray-400 border-r-4 border-r-transparent"></div>
-              </div>
+            </div>
 
-              {/* Busca */}
-              <div className="relative w-full md:w-64 lg:w-72">
-                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                  <input 
-                    type="text" 
-                    placeholder="Buscar por nome ou categoria..." 
-                    className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm shadow-sm" 
-                    value={searchTerm} 
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-              </div>
-          </div>
+            {/* 3. TOGGLE VISUALIZAÇÃO (Discreto - Lista primeiro) */}
+            <div className="bg-gray-100/50 p-1 rounded-lg border border-gray-200/50 flex shrink-0 self-start md:self-center">
+                <button 
+                    onClick={() => setViewMode('list')} 
+                    className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-blue-50 text-blue-600 shadow-sm' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200/50'}`} 
+                    title="Lista"
+                >
+                    <List size={18}/>
+                </button>
+                <button 
+                    onClick={() => setViewMode('grid')} 
+                    className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-blue-50 text-blue-600 shadow-sm' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200/50'}`} 
+                    title="Grade"
+                >
+                    <LayoutGrid size={18}/>
+                </button>
+            </div>
 
-          {/* Botão Novo */}
-          <button onClick={handleOpenNew} className="flex items-center justify-center gap-2 bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors shadow-sm shrink-0 cursor-pointer font-medium text-sm">
-            <Plus size={18} /> 
-            <span>Novo Produto</span>
-          </button>
+            {/* 4. CTA (Principal) */}
+            <button onClick={handleOpenNew} className="w-full md:w-auto flex items-center justify-center gap-2 bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors shadow-sm shrink-0 cursor-pointer font-medium text-sm">
+                <Plus size={18} /> 
+                <span className="whitespace-nowrap">Novo Produto</span>
+            </button>
 
         </div>
       </div>
@@ -344,7 +303,7 @@ export default function ProdutosClient({ produtos, gruposDisponiveis }: Produtos
         </div>
       )}
 
-      {/* MODAL DE PRODUTO */}
+      {/* MODAL DE PRODUTO (Mantido igual) */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -406,7 +365,7 @@ export default function ProdutosClient({ produtos, gruposDisponiveis }: Produtos
                 </div>
               </div>
               
-              {/* Resto do form (Imagem, Configs) */}
+              {/* Resto do form */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                  <div><label className="block text-sm font-medium text-gray-700 mb-1">Imagem</label><div className="flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:bg-gray-50 transition-colors relative cursor-pointer group h-48"><div className="space-y-1 text-center flex flex-col items-center justify-center h-full w-full">{formData.image ? (<div className="relative w-full h-full"><img src={formData.image} alt="Preview" className="mx-auto w-full h-full object-contain" /></div>) : (<><Upload className="mx-auto h-8 w-8 text-gray-400" /><span className="text-sm text-blue-600 font-medium">Clique para enviar</span></>)}<input type="file" accept="image/*" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={handleImageUpload}/></div></div></div>
                  <div className="space-y-3"><h3 className="text-sm font-bold text-gray-800 border-b pb-1">Configurações</h3><ToggleSwitch label="Produto Ativo" checked={formData.active} onChange={() => setFormData({...formData, active: !formData.active})} color="bg-green-600"/><ToggleSwitch label="Permitir Complemento" checked={formData.allowsComplements} onChange={() => setFormData({...formData, allowsComplements: !formData.allowsComplements})} /><ToggleSwitch label="Disponível (Estoque)" checked={formData.isAvailableOnline} onChange={() => setFormData({...formData, isAvailableOnline: !formData.isAvailableOnline})} /><ToggleSwitch label="Visível Online" checked={formData.isVisibleOnline} onChange={() => setFormData({...formData, isVisibleOnline: !formData.isVisibleOnline})} /></div>
@@ -421,28 +380,16 @@ export default function ProdutosClient({ produtos, gruposDisponiveis }: Produtos
         </div>
       )}
 
-      {/* --- MODAL DE VALIDAÇÃO --- */}
+      {/* --- MODAIS DE CONFIRMAÇÃO E ERRO (Mantidos) --- */}
       {isValidationModalOpen && (
         <div className="fixed inset-0 z-[10005] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in">
             <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full text-center space-y-4 animate-in zoom-in-95">
-                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto">
-                    <AlertCircle className="w-8 h-8 text-red-600" />
-                </div>
-                <div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-1">Atenção Necessária</h3>
-                    <p className="text-sm text-gray-500 leading-relaxed">{validationMessage}</p>
-                </div>
-                <button 
-                    onClick={() => setIsValidationModalOpen(false)} 
-                    className="w-full py-3 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition-colors shadow-lg cursor-pointer"
-                >
-                    Entendido, vou corrigir
-                </button>
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto"><AlertCircle className="w-8 h-8 text-red-600" /></div>
+                <div><h3 className="text-lg font-bold text-gray-900 mb-1">Atenção Necessária</h3><p className="text-sm text-gray-500 leading-relaxed">{validationMessage}</p></div>
+                <button onClick={() => setIsValidationModalOpen(false)} className="w-full py-3 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition-colors shadow-lg cursor-pointer">Entendido, vou corrigir</button>
             </div>
         </div>
       )}
-
-      {/* Outros Modais */}
       {isSuccessModalOpen && (<div className="fixed inset-0 z-[10002] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in"><div className="bg-white rounded-2xl p-6 text-center"><CheckCircle size={32} className="text-green-600 mx-auto mb-2"/><h3 className="font-bold">Sucesso!</h3><button onClick={() => setIsSuccessModalOpen(false)} className="mt-4 px-4 py-2 bg-green-600 text-white rounded-lg cursor-pointer">OK, Entendido</button></div></div>)}
       {isDeleteModalOpen && (<div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"><div className="bg-white w-full max-w-sm rounded-2xl shadow-xl p-6 text-center"><div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4"><Trash2 className="text-red-600" size={32} /></div><h3 className="text-xl font-bold text-gray-800 mb-2">Excluir Produto?</h3><div className="flex gap-3 justify-center"><button onClick={() => setIsDeleteModalOpen(false)} className="flex-1 px-4 py-2 bg-gray-100 rounded-lg cursor-pointer">Não</button><button onClick={confirmDeleteProduct} className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg cursor-pointer">Sim</button></div></div></div>)}
       {isVariationDeleteModalOpen && (

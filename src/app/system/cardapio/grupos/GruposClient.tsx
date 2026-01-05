@@ -5,10 +5,8 @@ import { useRouter } from 'next/navigation';
 import { 
   Search, Plus, Edit3, Trash2, X, Save, 
   CheckCircle2, Layers, ListChecks, Settings2, PlusCircle,
-  AlertTriangle 
+  AlertTriangle, Filter // Adicionado Filter aqui
 } from 'lucide-react';
-// Certifique-se de que o caminho para saveGroup e deleteGroup está correto
-// Geralmente server actions ficam em uma pasta separada ou no mesmo arquivo se for server component
 import { saveGroup, deleteGroup } from '@/app/actions'; 
 
 // --- INTERFACES ---
@@ -42,26 +40,22 @@ interface DatabaseGroup {
   nome: string;
   ordem: number;
   ativo: boolean;
-  // O Prisma retorna arrays dessas relações, mas pode vir undefined se faltar o include
   variacoes?: { id: number; nome: string }[];
   complementos?: { id: number; nome: string; preco: string | number; maxQtd: number; obrigatorio: boolean }[];
-  // Relações que o prisma pode trazer com outros nomes dependendo do schema
   grupovariacao?: { id: number; nome: string }[];
   grupocomplemento?: { id: number; nome: string; preco: string | number; maxQtd: number; obrigatorio: boolean }[];
-  produtos?: any[]; // Adicionado para compatibilidade caso venha
+  produtos?: any[]; 
 }
 
 export default function GruposClient({ grupos = [] }: { grupos: any[] }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
-  // CONVERSÃO DE DADOS (Banco -> Visual) COM PROTEÇÃO CONTRA CRASH
+  // CONVERSÃO DE DADOS
   const processGroups = (rawGroups: any[]): ProductGroup[] => {
     if (!Array.isArray(rawGroups)) return [];
     
     return rawGroups.map((dbGroup: DatabaseGroup) => {
-      // Normalização para lidar com diferentes nomes de campos do Prisma
-      // (Alguns schemas usam variacoes, outros grupovariacao)
       const rawVariations = dbGroup.variacoes || dbGroup.grupovariacao || [];
       const rawComplements = dbGroup.complementos || dbGroup.grupocomplemento || [];
 
@@ -70,11 +64,9 @@ export default function GruposClient({ grupos = [] }: { grupos: any[] }) {
         sequence: dbGroup.ordem || 0,
         description: dbGroup.nome || 'Sem nome',
         active: dbGroup.ativo ?? true,
-        // Mapeia Variações com proteção
         variations: Array.isArray(rawVariations) 
           ? rawVariations.map((v: any) => ({ id: v.id, name: v.nome }))
           : [],
-        // Mapeia Complementos com proteção
         complements: Array.isArray(rawComplements)
           ? rawComplements.map((c: any) => ({ 
               id: c.id, 
@@ -90,12 +82,13 @@ export default function GruposClient({ grupos = [] }: { grupos: any[] }) {
 
   const [groups, setGroups] = useState<ProductGroup[]>(processGroups(grupos));
   
-  // Atualiza lista local sempre que o banco mudar (revalidatePath)
   useEffect(() => {
     setGroups(processGroups(grupos));
   }, [grupos]);
 
+  // STATES DE FILTRO
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all'); // NOVO STATE
 
   // Estados do Modal Principal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -158,15 +151,12 @@ export default function GruposClient({ grupos = [] }: { grupos: any[] }) {
     };
 
     try {
-      // Chama a Server Action
       const result = await saveGroup(dataToSend);
 
       if (result.success) {
           setIsModalOpen(false);
           setShowSuccessModal(true);
-          router.refresh(); // Recarrega os dados da página
-          // Não precisa de timeout para fechar o modal de sucesso se tiver botão "Entendido"
-          // mas pode manter se preferir fechar automático
+          router.refresh(); 
       } else {
           alert("Erro ao salvar: " + (result.error || "Erro desconhecido"));
       }
@@ -181,7 +171,6 @@ export default function GruposClient({ grupos = [] }: { grupos: any[] }) {
   // --- MANIPULAÇÃO VISUAL DE VARIAÇÕES ---
   const addVariation = () => {
     if (!tempVariation.trim()) return;
-    // Usamos timestamp negativo para IDs temporários para evitar colisão com IDs do banco
     const newVar = { id: -Date.now(), name: tempVariation }; 
     setFormData({ ...formData, variations: [...formData.variations, newVar] });
     setTempVariation('');
@@ -191,7 +180,7 @@ export default function GruposClient({ grupos = [] }: { grupos: any[] }) {
   const addComplement = () => {
     if (!tempComplement.name.trim()) return;
     const newComp = { 
-      id: -Date.now(), // ID temporário negativo
+      id: -Date.now(), 
       name: tempComplement.name, 
       price: parseFloat(tempComplement.price) || 0, 
       maxQuantity: tempComplement.max, 
@@ -201,17 +190,14 @@ export default function GruposClient({ grupos = [] }: { grupos: any[] }) {
     setTempComplement({ name: '', price: '', max: 1, required: false });
   };
 
-  // --- PREPARA EXCLUSÃO ---
   const requestDelete = (type: 'variation' | 'complement' | 'group', id: number) => {
     setDeleteTarget({ type, id });
   };
 
-  // --- CONFIRMA EXCLUSÃO ---
   const confirmDelete = async () => {
     if (!deleteTarget) return;
 
     if (deleteTarget.type === 'group') {
-      // Excluir GRUPO inteiro do banco
       setIsLoading(true);
       try {
         const result = await deleteGroup(deleteTarget.id);
@@ -230,7 +216,6 @@ export default function GruposClient({ grupos = [] }: { grupos: any[] }) {
       }
 
     } else if (deleteTarget.type === 'variation') {
-      // Remove visualmente do formulário (só salva no banco ao clicar em "Salvar Alterações")
       setFormData({
         ...formData,
         variations: formData.variations.filter(v => v.id !== deleteTarget.id)
@@ -238,7 +223,6 @@ export default function GruposClient({ grupos = [] }: { grupos: any[] }) {
       setDeleteTarget(null);
 
     } else {
-      // Remove visualmente do formulário
       setFormData({
         ...formData,
         complements: formData.complements.filter(c => c.id !== deleteTarget.id)
@@ -246,6 +230,19 @@ export default function GruposClient({ grupos = [] }: { grupos: any[] }) {
       setDeleteTarget(null);
     }
   };
+
+  // --- LÓGICA DE FILTRAGEM ATUALIZADA ---
+  const filteredGroups = groups
+    .filter(g => {
+        const matchesSearch = g.description.toLowerCase().includes(searchTerm.toLowerCase());
+        
+        let matchesStatus = true;
+        if (filterStatus === 'active') matchesStatus = g.active === true;
+        if (filterStatus === 'inactive') matchesStatus = g.active === false;
+
+        return matchesSearch && matchesStatus;
+    })
+    .sort((a,b) => a.sequence - b.sequence);
 
   return (
     <div className="p-4 md:p-8 bg-gray-50 min-h-full font-sans text-gray-800">
@@ -265,16 +262,35 @@ export default function GruposClient({ grupos = [] }: { grupos: any[] }) {
           </button>
         </div>
 
-        {/* Barra de Busca */}
-        <div className="relative">
-          <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-          <input 
-            type="text" 
-            placeholder="Pesquisar por descrição..." 
-            className="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all" 
-            value={searchTerm} 
-            onChange={(e) => setSearchTerm(e.target.value)} 
-          />
+        {/* Barra de Ferramentas (Filtro + Busca) */}
+        <div className="flex flex-col md:flex-row gap-3">
+            
+            {/* Dropdown Status */}
+            <div className="relative shrink-0 md:w-48">
+                <Filter className="absolute left-3 top-3 h-5 w-5 text-gray-400 pointer-events-none" />
+                <select 
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value as any)}
+                    className="w-full pl-11 pr-8 py-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 bg-white appearance-none cursor-pointer shadow-sm text-gray-700 font-medium"
+                >
+                    <option value="all">Todos</option>
+                    <option value="active">Ativos</option>
+                    <option value="inactive">Inativos</option>
+                </select>
+                <div className="absolute right-3 top-4 pointer-events-none border-l-4 border-l-transparent border-t-4 border-t-gray-400 border-r-4 border-r-transparent"></div>
+            </div>
+
+            {/* Barra de Busca */}
+            <div className="relative flex-1">
+                <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                <input 
+                    type="text" 
+                    placeholder="Pesquisar por descrição..." 
+                    className="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all" 
+                    value={searchTerm} 
+                    onChange={(e) => setSearchTerm(e.target.value)} 
+                />
+            </div>
         </div>
       </div>
 
@@ -292,10 +308,7 @@ export default function GruposClient({ grupos = [] }: { grupos: any[] }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {groups
-                .filter(g => g.description.toLowerCase().includes(searchTerm.toLowerCase()))
-                .sort((a,b) => a.sequence - b.sequence) // Ordena pela sequência visualmente
-                .map((group) => (
+              {filteredGroups.map((group) => (
                 <tr key={group.id} className="hover:bg-gray-50/80 transition-colors group">
                   <td className="px-6 py-4 text-center">
                     <span className="font-mono font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded text-sm">
@@ -343,8 +356,10 @@ export default function GruposClient({ grupos = [] }: { grupos: any[] }) {
             </tbody>
           </table>
         </div>
-        {groups.length === 0 && (
-          <div className="p-12 text-center text-gray-400">Nenhum grupo encontrado.</div>
+        {filteredGroups.length === 0 && (
+          <div className="p-12 text-center text-gray-400">
+             {searchTerm || filterStatus !== 'all' ? 'Nenhum grupo encontrado com os filtros atuais.' : 'Nenhum grupo encontrado.'}
+          </div>
         )}
       </div>
 
