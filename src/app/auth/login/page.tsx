@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { 
   Mail, Lock, ArrowRight, Loader2, 
-  Eye, EyeOff, CheckCircle2, AlertTriangle 
+  Eye, EyeOff, CheckCircle2, AlertTriangle, Check 
 } from "lucide-react";
 
 import { loginUser } from "@/app/actions/auth";
@@ -14,6 +14,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false); // Novo estado
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
@@ -23,10 +24,10 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setErrorMessage(""); // Limpa erros anteriores
+    setErrorMessage(""); 
 
-    // Chama a Server Action de autenticação real
-    const result = await loginUser({ email, password });
+    // Envia o estado rememberMe para a Server Action
+    const result = await loginUser({ email, password, rememberMe });
 
     if (result.success) {
       router.push("/system/perfil");
@@ -133,6 +134,24 @@ export default function LoginPage() {
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
+            </div>
+
+            {/* CHECKBOX LEMBRAR SENHA */}
+            <div className="flex items-center">
+              <label className="flex items-center gap-2 cursor-pointer group select-none">
+                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all duration-200 ${rememberMe ? 'bg-blue-600 border-blue-600' : 'border-gray-300 bg-white group-hover:border-blue-400'}`}>
+                  {rememberMe && <Check size={14} className="text-white stroke-[3]" />}
+                </div>
+                <input 
+                  type="checkbox" 
+                  className="hidden"
+                  checked={rememberMe} 
+                  onChange={(e) => setRememberMe(e.target.checked)} 
+                />
+                <span className={`text-sm font-medium transition-colors ${rememberMe ? 'text-gray-800' : 'text-gray-500 group-hover:text-gray-700'}`}>
+                  Lembrar minha senha
+                </span>
+              </label>
             </div>
 
             {/* BOTÃO LOGIN */}

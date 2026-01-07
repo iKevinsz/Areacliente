@@ -28,6 +28,9 @@ const Sidebar = ({ open, setOpen }) => {
   const [storeMenuOpen, setStoreMenuOpen] = useState(false);
   const [selectedStore, setSelectedStore] = useState({ id: 1, name: "KEVIN-TESTE" });
   
+  // Estado para simular notificações de novos pedidos
+  const [pendingOrders, setPendingOrders] = useState(3); // Exemplo: 3 pedidos pendentes
+
   const myStores = [
     { id: 1, name: "KEVIN-TESTE" },
     { id: 2, name: "LUNIERE BALÕES DECOR" },
@@ -86,7 +89,11 @@ const Sidebar = ({ open, setOpen }) => {
       gap: true,
       key: "cardapio",
       subMenu: [
-        { title: "Vendas", path: "/system/cardapio/pedidos" },
+        { 
+            title: "Vendas", 
+            path: "/system/cardapio/pedidos",
+            notification: pendingOrders 
+        },
         { title: "Dashboard", path: "/system/cardapio/dashboard" },
         { title: "Produtos", path: "/system/cardapio/produtos" },
         { title: "Grupos", path: "/system/cardapio/grupos" },
@@ -143,6 +150,7 @@ const Sidebar = ({ open, setOpen }) => {
       icon: <FaServer />,
       key: "sistema",
       subMenu: [
+        { title: "Planos", path: "/system/sistema/planos" },
         { title: "Licenças", path: "/system/sistema/licencas" },
         { title: "Cadastrar Cartão", path: "/system/sistema/cartao" },
         { title: "Faturas", path: "/system/sistema/faturas" },
@@ -294,13 +302,25 @@ const Sidebar = ({ open, setOpen }) => {
                       toggleSubMenu(Menu.key);
                     }}
                   >
-                    <div className={`flex items-center ${open ? "gap-3" : ""}`}>
-                      <span className="text-2xl text-gray-500 group-hover:text-[#00254d] transition-colors shrink-0">
+                    <div className={`flex items-center ${open ? "gap-3" : ""} relative`}>
+                      <span className="text-2xl text-gray-500 group-hover:text-[#00254d] transition-colors shrink-0 relative">
                         {Menu.icon}
+                        
+                        {/* NOTIFICAÇÃO NO MENU PAI (BOLINHA) SE FECHADO */}
+                        {!open && Menu.subMenu.some(sub => sub.notification > 0) && (
+                            <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-[#F3F4F6]"></span>
+                        )}
                       </span>
                       <span className={`font-medium text-gray-600 group-hover:text-[#00254d] whitespace-nowrap transition-all duration-200 ${!open ? "opacity-0 w-0 overflow-hidden" : "opacity-100 w-auto"}`}>
                         {Menu.title}
                       </span>
+                      
+                      {/* NOTIFICAÇÃO NO MENU PAI (CONTADOR) SE ABERTO */}
+                      {open && !subMenus[Menu.key] && Menu.subMenu.some(sub => sub.notification > 0) && (
+                         <span className="ml-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">
+                            {Menu.subMenu.reduce((acc, sub) => acc + (sub.notification || 0), 0)}
+                         </span>
+                      )}
                     </div>
                     {open && (
                       <FaChevronDown className={`text-gray-400 group-hover:text-[#00254d] transition-transform duration-200 ${subMenus[Menu.key] && "rotate-180"}`} size={12} />
@@ -326,11 +346,20 @@ const Sidebar = ({ open, setOpen }) => {
                       <li key={i}>
                         <Link
                           href={sub.path}
-                          className={`flex items-center gap-2 py-2 px-3 text-sm rounded-md transition-all ${pathname === sub.path ? "text-[#00254d] font-bold bg-white shadow-sm" : "text-gray-500 hover:text-[#00254d] hover:bg-white hover:shadow-sm"}`}
+                          className={`flex items-center justify-between gap-2 py-2 px-3 text-sm rounded-md transition-all ${pathname === sub.path ? "text-[#00254d] font-bold bg-white shadow-sm" : "text-gray-500 hover:text-[#00254d] hover:bg-white hover:shadow-sm"}`}
                           onClick={() => { if (isMobile) setOpen(false); }}
                         >
-                          <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${pathname === sub.path ? "bg-[#00254d]" : "bg-gray-300"}`}></div>
-                          <span className="whitespace-nowrap truncate">{sub.title}</span>
+                          <div className="flex items-center gap-2 overflow-hidden">
+                              <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${pathname === sub.path ? "bg-[#00254d]" : "bg-gray-300"}`}></div>
+                              <span className="whitespace-nowrap truncate">{sub.title}</span>
+                          </div>
+                          
+                          {/* BADGE DE NOTIFICAÇÃO NO SUBMENU */}
+                          {sub.notification > 0 && (
+                              <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-pulse">
+                                  {sub.notification}
+                              </span>
+                          )}
                         </Link>
                       </li>
                     ))}

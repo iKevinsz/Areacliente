@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { 
   Mail, Lock, ArrowRight, Loader2, 
-  Eye, EyeOff, User, ShieldCheck, CheckCircle2, AlertTriangle 
+  Eye, EyeOff, User, ShieldCheck, CheckCircle2, AlertTriangle, X 
 } from "lucide-react";
 import { registerUser } from "@/app/actions/auth";
 
@@ -19,6 +19,9 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
+  
+  // Novo estado para o Modal
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,18 +38,23 @@ export default function RegisterPage() {
     const result = await registerUser({ name, email, password });
 
     if (result.success) {
-      // Redireciona para o login ou perfil após o sucesso
-      router.push("/auth/login?success=true");
+      // SUCESSO: Exibe o modal em vez de redirecionar direto
+      setIsLoading(false);
+      setShowSuccessModal(true);
     } else {
       setErrorMessage(result.error || "Ocorreu um erro.");
       setIsLoading(false);
     }
   };
 
+  const handleRedirectToLogin = () => {
+    router.push("/auth/login?success=true");
+  };
+
   return (
-    <div className="min-h-screen flex w-full bg-white font-sans overflow-hidden">
+    <div className="min-h-screen flex w-full bg-white font-sans overflow-hidden relative">
       
-      {/* LADO ESQUERDO: BRANDING (Mantendo consistência com o Login) */}
+      {/* LADO ESQUERDO: BRANDING */}
       <div className="hidden lg:flex w-1/2 bg-[#003366] relative items-center justify-center p-12 overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-full z-0 opacity-20 pointer-events-none">
            <div className="absolute top-[-20%] left-[-20%] w-[500px] h-[500px] bg-blue-400 rounded-full blur-[100px] animate-pulse"></div>
@@ -83,6 +91,13 @@ export default function RegisterPage() {
             <h2 className="text-3xl font-bold text-gray-900">Criar nova conta</h2>
             <p className="text-sm text-gray-500 mt-2">Preencha os dados para ativar seu acesso.</p>
           </div>
+
+          {errorMessage && (
+            <div className="bg-red-50 text-red-600 p-3 rounded-lg flex items-center gap-2 text-sm">
+              <AlertTriangle size={16} />
+              {errorMessage}
+            </div>
+          )}
 
           <form onSubmit={handleRegister} className="space-y-5">
             
@@ -200,6 +215,35 @@ export default function RegisterPage() {
 
         </div>
       </div>
+
+      {/* --- MODAL DE SUCESSO --- */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center space-y-6 animate-in zoom-in-95 duration-300 relative">
+            
+            {/* Ícone de Sucesso Animado */}
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce-slow">
+              <CheckCircle2 className="w-10 h-10 text-green-600" />
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-2xl font-bold text-gray-900">Conta Criada!</h3>
+              <p className="text-gray-500 text-sm leading-relaxed">
+                Seu cadastro foi realizado com sucesso. Agora você já pode acessar a plataforma.
+              </p>
+            </div>
+
+            <button 
+              onClick={handleRedirectToLogin}
+              className="w-full bg-[#003366] hover:bg-blue-900 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-900/20 transition-all transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+            >
+              Ir para o Login
+              <ArrowRight size={18} />
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
