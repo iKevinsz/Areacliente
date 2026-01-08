@@ -1,55 +1,53 @@
-'use server'
+"use server";
 
-import { prisma } from '@/lib/prisma';
-import { revalidatePath } from 'next/cache';
+import { prisma } from "@/lib/prisma"; 
+import { revalidatePath } from "next/cache";
 
-// Ação para Cadastrar Nova Sugestão
 export async function criarSugestao(formData: FormData) {
-  const descricao = formData.get('descricao') as string;
-  const sistema = formData.get('sistema') as string;
-  const classificacao = formData.get('classificacao') as string;
-
   try {
-    // Insere no banco usando Prisma
-    await prisma.sugestoes_melhorias.create({
+    const descricao = formData.get("descricao") as string;
+    const observacoes = formData.get("observacoes") as string;
+    const sistema = formData.get("sistema") as string;
+    const classificacao = formData.get("classificacao") as string;
+
+    if (!descricao || !observacoes || !sistema || !classificacao) {
+      return { success: false, message: "Campos obrigatórios faltando." };
+    }
+
+    await prisma.sugestao.create({
       data: {
-        data_registro: new Date(),
         descricao,
+        observacoes,
         sistema,
         classificacao,
+        data: new Date().toLocaleDateString('pt-BR'), 
         curtidas: 0,
-        status: 'pendente'
-      }
+        status: "pendente",
+      },
     });
-    
-    // Atualiza a tela para exibir o novo item
-    revalidatePath('/system/sistema/sugestoes');
+
+    revalidatePath("/sistema/sugestoes"); // Atualiza a tela sem refresh
     return { success: true };
   } catch (error) {
-    console.error(error);
-    return { success: false, error: 'Erro ao cadastrar' };
+    console.error("Erro ao criar sugestão:", error);
+    return { success: false, message: "Erro ao salvar no banco." };
   }
 }
 
-// Ação para Atualizar Curtidas (Toggle)
 export async function toggleLikeAction(id: number, incrementar: boolean) {
   try {
-    // Atualiza o contador no banco usando Prisma
-    const sugestao = await prisma.sugestoes_melhorias.findUnique({ where: { id } });
-    if (sugestao) {
-      const curtidasAtuais = sugestao.curtidas ?? 0;
-      await prisma.sugestoes_melhorias.update({
-        where: { id },
-        data: {
-          curtidas: incrementar ? curtidasAtuais + 1 : Math.max(0, curtidasAtuais - 1)
-        }
-      });
-    }
-    
-    revalidatePath('/system/sistema/sugestoes');
+    await prisma.sugestao.update({
+      where: { id },
+      data: {
+        curtidas: {
+          [incrementar ? "increment" : "decrement"]: 1,
+        },
+      },
+    });
+    revalidatePath("/sistema/sugestoes");
     return { success: true };
   } catch (error) {
-    console.error(error);
+    console.error("Erro ao dar like:", error);
     return { success: false };
   }
 }

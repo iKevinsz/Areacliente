@@ -408,3 +408,16 @@ model ItemOrcamento {
   orcamentoId Int
   orcamento   Orcamento @relation(fields: [orcamentoId], references: [id], onDelete: Cascade)
 }
+
+model Sugestao {
+  id            Int      @id @default(autoincrement())
+  data          String    
+  descricao     String   
+  observacoes   String    
+  sistema       String
+  classificacao String
+  curtidas      Int      @default(0)
+  status        String   @default("pendente") 
+
+  @@map("sugestoes") // Nome da tabela no banco
+}
