@@ -237,33 +237,56 @@ export default function EmpresaSettingsPage({
     defaultValues: empresaInicial,
   });
 
-  const { setValue, watch, handleSubmit } = methods;
+  const { setValue, watch, handleSubmit, setFocus, setError, clearErrors } = methods;
   const cepValue = watch("cep");
 
   // CEP Logic
-  useEffect(() => {
+ useEffect(() => {
     const cleanCep = cepValue?.replace(/\D/g, "");
     if (cleanCep?.length === 8) {
-      const handler = setTimeout(async () => {
-        setIsSearchingCep(true);
+      setIsSearchingCep(true);
+      // Limpa erros anteriores de CEP se o usuário estiver digitando
+      clearErrors("cep");
+      const fetchAddress = async () => {
         try {
           const res = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
           const data = await res.json();
+
           if (!data.erro) {
-            setValue("endereco", data.logradouro);
-            setValue("bairro", data.bairro);
-            setValue("cidade", data.localidade);
-            setValue("uf", data.uf);
+            // Preenche os campos e avisa o Zod que eles estão válidos (shouldValidate: true)
+            setValue("endereco", data.logradouro, { shouldValidate: true });
+            setValue("bairro", data.bairro, { shouldValidate: true });
+            setValue("cidade", data.localidade, { shouldValidate: true });
+            setValue("uf", data.uf, { shouldValidate: true });
+            
+            // Tenta preencher complemento se vier (muitas das vezes não vem)
+            if(data.complemento) {
+                setValue("complemento", data.complemento, { shouldValidate: true });
+            }
+
+            // UX: Move o foco do cursor para o campo "Número" automaticamente
+            setFocus("numero");
+          } else {
+            // CEP válido em formato, mas inexistente na base
+            setError("cep", { 
+              type: "manual", 
+              message: "CEP não encontrado." 
+            });
           }
         } catch (e) {
-          console.error("Erro CEP", e);
+          console.error("Erro ao buscar CEP", e);
+          setError("cep", { 
+            type: "manual", 
+            message: "Erro ao buscar CEP." 
+          });
         } finally {
           setIsSearchingCep(false);
         }
-      }, 500);
-      return () => clearTimeout(handler);
+      };
+
+      fetchAddress();
     }
-  }, [cepValue, setValue]);
+  }, [cepValue, setValue, setFocus, setError, clearErrors]);
 
   const onSubmit = async (data: any) => {
     setIsSaving(true);
