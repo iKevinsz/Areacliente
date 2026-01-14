@@ -77,7 +77,6 @@ export async function deleteGroup(id: number) {
 
 // --- AÇÕES DE PRODUTOS ---
 
-// src/app/actions.ts
 
 export async function saveProduct(data: any) {
   try {
