@@ -47,7 +47,7 @@ export async function loginUser(data: any) {
     const passwordMatch = await bcrypt.compare(password, user.senha);
     if (!passwordMatch) return { success: false, error: "E-mail ou senha incorretos." };
 
-    // Aqui você implementaria sua lógica de sessão (Cookies, JWT ou NextAuth)
+  
     return { success: true, user: { name: user.nome, email: user.email } };
   } catch (error) {
     return { success: false, error: "Erro ao realizar login." };

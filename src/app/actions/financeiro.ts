@@ -29,7 +29,7 @@ export async function getTransacoes(empresaId: number) {
 // Salva (Novo) ou Atualiza (Edição)
 export async function saveTransacao(data: any) {
   try {
-    const empresaId = 1; // Ajuste conforme a sessão do usuário
+    const empresaId = 1; 
 
     // Formata o objeto para o padrão do banco
     const payload = {
