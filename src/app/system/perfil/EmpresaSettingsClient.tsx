@@ -307,10 +307,50 @@ export default function EmpresaSettingsPage({
   const linkLojaWatch = watch("linkLoja");
   const fullLinkUrl = `https://www.pededaki.com.br/${linkLojaWatch || "loja"}`;
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(fullLinkUrl);
-    setIsCopied(true);
-    setTimeout(() => setIsCopied(false), 2000);
+const copyToClipboard = () => {
+    // 1. Verificação de segurança e fallback
+    if (!navigator?.clipboard) {
+      console.warn("Clipboard API indisponível (requer HTTPS)");
+      
+      
+      try {
+        const textArea = document.createElement("textarea");
+        textArea.value = fullLinkUrl;
+        
+        // Garante que o textarea não seja visível visualmente
+        textArea.style.top = "0";
+        textArea.style.left = "0";
+        textArea.style.position = "fixed";
+        
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        
+        if (successful) {
+          setIsCopied(true);
+          setTimeout(() => setIsCopied(false), 2000);
+          return;
+        }
+      } catch (err) {
+        console.error('Fallback falhou', err);
+      }
+
+      alert("Não foi possível copiar automaticamente. Verifique se o site está em HTTPS.");
+      return;
+    }
+
+    
+    navigator.clipboard.writeText(fullLinkUrl)
+      .then(() => {
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
+      })
+      .catch((err) => {
+        console.error("Erro ao copiar:", err);
+      });
   };
 
   return (
