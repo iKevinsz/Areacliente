@@ -91,7 +91,7 @@ export async function saveProduct(data: any) {
       if (grupo) grupoIdConectado = grupo.id;
     }
 
-    // MAPEAMENTO DOS SWITCHES PARA O BANCO
+    // MAPEAMENTO DOS SWITCHES PARA O BANCO;
     const payloadProduto = {
       nome: data.description,
       categoria: data.group,
