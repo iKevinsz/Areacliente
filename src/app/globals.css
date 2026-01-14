@@ -10,9 +10,6 @@ body {
   font-family: Arial, Helvetica, sans-serif;
   @apply bg-gray-50; /* ou #F3F4F6 para um cinza exato ao da sidebar */
 }
-<<<<<<< HEAD
-
-
 
 .label {
   @apply block mb-2 text-sm text-gray-600;
@@ -21,5 +18,4 @@ body {
 .input {
   @apply w-full border border-gray-300 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400;
 }
-=======
->>>>>>> 41fc8df85f1e632cbee79edbcc9aa6d26ceb263f
+
