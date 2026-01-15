@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🚀 Área do Cliente (Enterprise ERP System)
 
-## Getting Started
+Bem-vindo ao repositório oficial da **Área do Cliente**. Este é um sistema de gestão empresarial (ERP) de alta complexidade, desenvolvido para centralizar operações de vendas, fiscal e financeiro em uma única plataforma web moderna e performática.
 
-First, run the development server:
+O projeto utiliza a arquitetura de ponta do **Next.js (App Router)** com renderização híbrida e Server Actions.
+
+## 🛠️ Stack Tecnológica
+
+O sistema foi construído sobre uma base sólida, tipada e escalável:
+
+* **Core:** [Next.js 15](https://nextjs.org/) (App Router & Server Components)
+* **Linguagem:** TypeScript (Strict Mode)
+* **Estilização:** Tailwind CSS (Design System responsivo)
+* **Banco de Dados:** Prisma ORM (PostgreSQL)
+* **Arquitetura:** Modular Monolith (Módulos desacoplados dentro de `/system`)
+
+## 📦 Módulos do Sistema
+
+A aplicação é dividida em módulos funcionais localizados em `src/app/system`:
+
+* **🛒 INFORMAÇÕES FINANCEIRAS DO PDV (Ponto de Venda):** Dashboard e controle de caixa.
+* **📄 NFe (Nota Fiscal Eletrônica):** Emissão e gerenciamento fiscal.
+* **💰 Financeiro & Faturamento:** Controle de contas a pagar/receber e fluxo de caixa.
+* **🍔 Cardápio Digital:** Gestão de produtos e categorias para food service.
+* **⚙️ Configurações & Suporte:** Painel administrativo e central de ajuda.
+
+## 📂 Estrutura do Projeto
+
+A organização de pastas segue o padrão de domínios, facilitando a manutenção:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+src/
+├── app/
+│   ├── actions/          # Server Actions globais
+│   ├── auth/             # Autenticação (Login/Recuperação de Senha)
+│   ├── system/           # Núcleo do Sistema (Área Logada)
+│   │   ├── api/          # Rotas de API internas
+│   │   ├── cardapio/     # Módulo de Produtos/Cardápio
+│   │   ├── faturamento/  # Gestão de Vendas
+│   │   ├── financeiro/   # DRE e Fluxo de Caixa
+│   │   ├── nfe/          # Emissor Fiscal
+│   │   ├── pdv/          # Frente de Caixa
+│   │   ├── suporte/      # Helpdesk
+│   │   └── layout.tsx    # Layout Persistente (Sidebar + Header)
+│   └── layout.tsx        # Root Layout
+├── components/           # UI Kit (Botões, Modais, Tables)
+├── lib/                  # Utilitários e Configurações (Prisma, Axios)
+└── prisma/               # Schema do Banco de Dados
