@@ -28,8 +28,7 @@ const Sidebar = ({ open, setOpen }) => {
   const [storeMenuOpen, setStoreMenuOpen] = useState(false);
   const [selectedStore, setSelectedStore] = useState({ id: 1, name: "KEVIN-TESTE" });
   
-  // Estado para simular notificações de novos pedidos
-  const [pendingOrders, setPendingOrders] = useState(3); // Exemplo: 3 pedidos pendentes
+  const [pendingOrders, setPendingOrders] = useState(3);
 
   const myStores = [
     { id: 1, name: "KEVIN-TESTE" },
@@ -89,11 +88,7 @@ const Sidebar = ({ open, setOpen }) => {
       gap: true,
       key: "cardapio",
       subMenu: [
-        { 
-            title: "Vendas", 
-            path: "/system/cardapio/pedidos",
-            notification: pendingOrders 
-        },
+        { title: "Vendas", path: "/system/cardapio/pedidos", notification: pendingOrders },
         { title: "Dashboard", path: "/system/cardapio/dashboard" },
         { title: "Produtos", path: "/system/cardapio/produtos" },
         { title: "Grupos", path: "/system/cardapio/grupos" },
@@ -112,7 +107,6 @@ const Sidebar = ({ open, setOpen }) => {
         { title: "Consultar Caixa", path: "/system/pdv/caixa" },
       ],
     },
-    
     {
       title: "NF-e",
       icon: <MdReceipt />,
@@ -123,7 +117,6 @@ const Sidebar = ({ open, setOpen }) => {
         { title: "Orçamentos", path: "/system/nfe/orcamentos" }, 
       ],
     },
-
     {
       title: "Financeiro",
       icon: <MdAttachMoney />,
@@ -159,18 +152,8 @@ const Sidebar = ({ open, setOpen }) => {
         { title: "Downloads", path: "/system/sistema/downloads" },
       ],
     },
-    {
-      title: "Suporte",
-      icon: <MdOutlineHeadsetMic />, 
-      path: "/system/suporte",
-      key: "suporte"
-    },
-    {
-      title: "Configurações",
-      icon: <FaGears />, 
-      path: "/system/configuracoes/geral", 
-      key: "configuracoes"
-    },
+    { title: "Suporte", icon: <MdOutlineHeadsetMic />, path: "/system/suporte", key: "suporte" },
+    { title: "Configurações", icon: <FaGears />, path: "/system/configuracoes/geral", key: "configuracoes" },
   ];
 
   return (
@@ -208,17 +191,6 @@ const Sidebar = ({ open, setOpen }) => {
           ${!open ? "invisible md:visible" : "visible"}
         `}
       >
-        {/* BOTÃO FIXAR/SOLTAR */}
-        <div
-          title={isPinned ? "Desafixar Sidebar" : "Fixar Sidebar"}
-          className={`hidden md:flex absolute cursor-pointer -right-3 top-9 w-7 h-7 bg-white border-2 rounded-full text-sm items-center justify-center transition-all duration-300 z-50 shadow-md hover:scale-110 
-            ${isPinned ? "border-blue-500 text-blue-500 shadow-blue-200" : "border-[#00254d] text-[#00254d]"}
-          `}
-          onClick={togglePin}
-        >
-          {isPinned ? <FaThumbtack className="rotate-45" /> : <FaThumbtack />}
-        </div>
-
         {/* BOTÃO FECHAR MOBILE */}
         <div
           className="md:hidden absolute top-4 right-4 text-[#00254d] hover:text-[#001a35] cursor-pointer p-2 z-50"
@@ -229,20 +201,36 @@ const Sidebar = ({ open, setOpen }) => {
 
         <div className="h-full w-full flex flex-col p-5 pt-8 overflow-hidden">
           
-          <div className={`flex-shrink-0 flex items-center mb-6 transition-all duration-300 ${open ? "gap-x-4 justify-start" : "justify-center"}`}>
-            <div className="relative w-10 h-10 shrink-0">
-              <img
-                src="/logo.png"
-                alt="logo"
-                className={`w-10 h-10 rounded-md object-cover border-[#00254d]/20 transition-all duration-700 ease-in-out ${
-                  open ? "md:rotate-[360deg]" : ""
-                }`}
-              />
-            </div>
+          {/* HEADER (LOGO, TÍTULO E BOTÃO DE FIXAR) */}
+          <div className={`flex-shrink-0 flex items-center mb-6 transition-all duration-300 ${open ? "justify-between" : "justify-center"}`}>
             
-            <h1 className={`text-[#00254d] font-bold text-xl whitespace-nowrap transition-all duration-200 origin-left ${!open ? "opacity-0 w-0 scale-0 overflow-hidden" : "opacity-100 w-auto scale-100"}`}>
-              Datacaixa Web
-            </h1>
+            <div className={`flex items-center ${open ? "gap-x-4" : ""}`}>
+              <div className="relative w-10 h-10 shrink-0">
+                <img
+                  src="/logo.png"
+                  alt="logo"
+                  className={`w-10 h-10 rounded-md object-cover border-[#00254d]/20 transition-all duration-700 ease-in-out ${
+                    open ? "md:rotate-[360deg]" : ""
+                  }`}
+                />
+              </div>
+              
+              <h1 className={`text-[#00254d] font-bold text-xl whitespace-nowrap transition-all duration-200 origin-left ${!open ? "opacity-0 w-0 scale-0 overflow-hidden" : "opacity-100 w-auto scale-100"}`}>
+                Datacaixa Web
+              </h1>
+            </div>
+
+            {/* NOVO BOTÃO FIXAR MAIS ACESSÍVEL CORRIGIDO */}
+            <button
+              title={isPinned ? "Desafixar Sidebar" : "Fixar Sidebar"}
+              onClick={togglePin}
+              className={`items-center justify-center p-2 rounded-lg transition-all duration-200 hover:bg-gray-200 active:scale-95 ${
+                open ? "hidden md:flex" : "hidden" /* Correção principal aqui */
+              } ${isPinned ? "text-blue-600 bg-blue-50" : "text-gray-400"}`}
+            >
+              <FaThumbtack className={`text-lg transition-transform ${isPinned ? "rotate-45" : ""}`} />
+            </button>
+
           </div>
 
           {/* MENU DE LOJAS */}
@@ -291,6 +279,7 @@ const Sidebar = ({ open, setOpen }) => {
             )}
           </div>
 
+          {/* LISTA DE MENUS */}
           <ul className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide px-1 pb-4 space-y-2">
             {Menus.map((Menu, index) => (
               <li key={index} className={`${Menu.gap ? "mt-8" : "mt-1"}`}>
@@ -306,7 +295,6 @@ const Sidebar = ({ open, setOpen }) => {
                       <span className="text-2xl text-gray-500 group-hover:text-[#00254d] transition-colors shrink-0 relative">
                         {Menu.icon}
                         
-                        {/* NOTIFICAÇÃO NO MENU PAI (BOLINHA) SE FECHADO */}
                         {!open && Menu.subMenu.some(sub => sub.notification > 0) && (
                             <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-[#F3F4F6]"></span>
                         )}
@@ -315,7 +303,6 @@ const Sidebar = ({ open, setOpen }) => {
                         {Menu.title}
                       </span>
                       
-                      {/* NOTIFICAÇÃO NO MENU PAI (CONTADOR) SE ABERTO */}
                       {open && !subMenus[Menu.key] && Menu.subMenu.some(sub => sub.notification > 0) && (
                          <span className="ml-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">
                             {Menu.subMenu.reduce((acc, sub) => acc + (sub.notification || 0), 0)}
@@ -354,7 +341,6 @@ const Sidebar = ({ open, setOpen }) => {
                               <span className="whitespace-nowrap truncate">{sub.title}</span>
                           </div>
                           
-                          {/* BADGE DE NOTIFICAÇÃO NO SUBMENU */}
                           {sub.notification > 0 && (
                               <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-pulse">
                                   {sub.notification}

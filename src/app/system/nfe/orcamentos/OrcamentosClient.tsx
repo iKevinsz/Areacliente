@@ -1,671 +1,277 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation'; // Importante para refresh
-// Importe as actions criadas no Passo 2
-import { createOrcamento, updateOrcamentoStatus } from '@/app/actions/orcamento'; 
+import React, { useState, useEffect } from 'react';
 import { 
-  Search, Plus, FileText, CheckCircle2, XCircle, Clock, 
-  Printer, ChevronRight, Calculator, User, Calendar, Loader2, Trash2, Save, AlertTriangle, AlertCircle
+  Search, Plus, CheckCircle2, XCircle, Clock, 
+  ChevronRight, Calculator, FileText, FileSignature
 } from 'lucide-react';
 
-// --- TIPAGENS ---
-// Mantemos compatibilidade com o que vem do banco
-export interface ItemOrcamento {
-  id: number; // No form de criação, usamos timestamp temporário, no banco é Int
-  produto: string;
-  qtd: number;
-  valorUnit: number;
-  total: number;
-}
+// --- TIPAGEM ---
+type StatusOrcamento = 'pendente' | 'aprovado' | 'rejeitado';
 
-export interface OrcamentoDTO {
-  id: number;
+interface Orcamento {
+  id: string;
   cliente: string;
-  documento?: string | null;
-  dataEmissao: Date | string;
-  validade: Date | string;
+  emissao: string;
+  validade: string;
   total: number;
-  status: string;
-  observacao?: string | null;
-  itens: ItemOrcamento[];
+  status: StatusOrcamento;
 }
 
-interface OrcamentosClientProps {
-  initialOrcamentos: OrcamentoDTO[];
-}
+// Dados baseados na imagem fornecida
+const MOCK_ORCAMENTOS: Orcamento[] = [
+  { id: '#6', cliente: 'teste', emissao: '07/01/2026', validade: '14/01/2026', total: 0.00, status: 'pendente' },
+  { id: '#1', cliente: 'Tech Solutions Ltda', emissao: '31/12/2025', validade: '15/01/2026', total: 4500.00, status: 'aprovado' },
+  { id: '#2', cliente: 'João da Silva', emissao: '31/12/2025', validade: '07/01/2026', total: 3200.50, status: 'aprovado' },
+  { id: '#3', cliente: 'Padaria Pão Dourado', emissao: '21/12/2025', validade: '28/12/2025', total: 850.00, status: 'rejeitado' },
+  { id: '#4', cliente: 'Condomínio Jardins', emissao: '01/12/2025', validade: '16/12/2025', total: 12000.00, status: 'rejeitado' },
+];
 
-const INITIAL_NEW_ORCAMENTO = {
-  cliente: '',
-  documento: '',
-  validade: '',
-  observacao: '',
-  itens: [] as ItemOrcamento[]
-};
-
-export default function OrcamentosClient({ initialOrcamentos }: OrcamentosClientProps) {
-  // Recebe dados iniciais do Server Component (Banco de Dados)
-  const [orcamentos, setOrcamentos] = useState<OrcamentoDTO[]>(initialOrcamentos);
-  const router = useRouter(); // Hook para recarregar a página
-
+export default function OrcamentosPage() {
+  const [mounted, setMounted] = useState(false);
+  const [orcamentos, setOrcamentos] = useState<Orcamento[]>(MOCK_ORCAMENTOS);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'todos' | 'pendente' | 'aprovado' | 'rejeitado'>('todos');
-  
-  // Estados de UI
-  const [selectedOrcamento, setSelectedOrcamento] = useState<OrcamentoDTO | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [showWarningModal, setShowWarningModal] = useState(false);
-  const [validationError, setValidationError] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>('todos');
 
-  const [formData, setFormData] = useState(INITIAL_NEW_ORCAMENTO);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-  // --- RECARREGAR DADOS ---
-  // Atualiza a lista local quando o Next.js revalidar os dados
-  React.useEffect(() => {
-    setOrcamentos(initialOrcamentos);
-  }, [initialOrcamentos]);
+  const formatCurrency = (val: number) => 
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
-  // --- MÁSCARA CPF/CNPJ (Mantida igual) ---
-  const handleDocumentoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.replace(/\D/g, '');
-    if (value.length > 14) value = value.slice(0, 14);
-    if (value.length <= 11) {
-      value = value.replace(/(\d{3})(\d)/, '$1.$2');
-      value = value.replace(/(\d{3})(\d)/, '$1.$2');
-      value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-    } else {
-      value = value.replace(/^(\d{2})(\d)/, '$1.$2');
-      value = value.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
-      value = value.replace(/\.(\d{3})(\d)/, '.$1/$2');
-      value = value.replace(/(\d{4})(\d)/, '$1-$2');
-    }
-    setFormData(prev => ({ ...prev, documento: value }));
+  const getInitials = (name: string) => {
+    if (!name) return '??';
+    const names = name.trim().split(' ');
+    if (names.length >= 2) return (names[0][0] + names[1][0]).toUpperCase();
+    return name.substring(0, 2).toUpperCase();
   };
 
-  // --- LÓGICA DE ITENS (Mantida igual) ---
-  const handleAddItem = () => {
-    const newItem: ItemOrcamento = {
-      id: Date.now(), // ID temporário apenas para o frontend
-      produto: '',
-      qtd: 1,
-      valorUnit: 0,
-      total: 0
+  const getStatusConfig = (status: StatusOrcamento) => {
+    const configs = {
+      pendente: { color: "text-amber-700", bg: "bg-amber-100", border: "border-amber-200", label: "Pendente", icon: <Clock size={14} /> },
+      aprovado: { color: "text-emerald-700", bg: "bg-emerald-100", border: "border-emerald-200", label: "Aprovado", icon: <CheckCircle2 size={14} /> },
+      rejeitado: { color: "text-rose-700", bg: "bg-rose-100", border: "border-rose-200", label: "Rejeitado", icon: <XCircle size={14} /> },
     };
-    setFormData(prev => ({ ...prev, itens: [...prev.itens, newItem] }));
+    return configs[status];
   };
 
-  const handleRemoveItem = (id: number) => {
-    setFormData(prev => ({ ...prev, itens: prev.itens.filter(i => i.id !== id) }));
-  };
+  const filteredOrcamentos = orcamentos.filter(orc => {
+    const matchSearch = orc.cliente.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                        orc.id.includes(searchTerm);
+    const matchStatus = statusFilter === 'todos' || orc.status === statusFilter;
+    return matchSearch && matchStatus;
+  });
 
-  const handleUpdateItem = (id: number, field: keyof ItemOrcamento, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      itens: prev.itens.map(item => {
-        if (item.id === id) {
-          const updatedItem = { ...item, [field]: value };
-          if (field === 'qtd' || field === 'valorUnit') {
-            updatedItem.total = Number(updatedItem.qtd) * Number(updatedItem.valorUnit);
-          }
-          return updatedItem;
-        }
-        return item;
-      })
-    }));
-  };
-
-  const calculateTotalOrcamento = () => {
-    return formData.itens.reduce((acc, item) => acc + item.total, 0);
-  };
-
-  // --- SALVAR NO BANCO DE DADOS ---
-  const handleSaveOrcamento = async () => {
-    // Validações
-    if (!formData.cliente.trim()) {
-      setValidationError("Por favor, preencha o campo Nome do Cliente.");
-      return;
-    }
-    if (formData.itens.length === 0) {
-      setShowWarningModal(true);
-      return;
-    }
-
-    setIsProcessing(true);
-
-    // Preparar payload para a Server Action
-    const payload = {
-        cliente: formData.cliente,
-        documento: formData.documento,
-        validade: formData.validade || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        observacao: formData.observacao,
-        total: calculateTotalOrcamento(),
-        itens: formData.itens.map(i => ({
-            produto: i.produto,
-            qtd: i.qtd,
-            valorUnit: i.valorUnit,
-            total: i.total
-        }))
-    };
-
-    // Chamada ao Backend
-    const result = await createOrcamento(payload);
-
-    if (result.success) {
-        setIsCreating(false);
-        setFormData(INITIAL_NEW_ORCAMENTO);
-        router.refresh(); // Força o Next.js a buscar os dados novos no servidor
-    } else {
-        setValidationError("Erro ao salvar no banco de dados. Tente novamente.");
-    }
-    
-    setIsProcessing(false);
-  };
-
-  // --- ATUALIZAR STATUS NO BANCO ---
-  const handleStatusChange = async (novoStatus: 'aprovado' | 'rejeitado') => {
-    if (!selectedOrcamento) return;
-    setIsProcessing(true);
-
-    const result = await updateOrcamentoStatus(selectedOrcamento.id, novoStatus);
-
-    if (result.success) {
-        // Atualiza localmente para feedback instantâneo e depois faz refresh
-        setSelectedOrcamento(prev => prev ? { ...prev, status: novoStatus } : null);
-        router.refresh(); 
-    } else {
-        alert("Erro ao atualizar status");
-    }
-    
-    setIsProcessing(false);
-  };
-
-  // ... (RESTANTE DO CÓDIGO DE FORMATADORES E RENDERIZAÇÃO PERMANECE IGUAL) ...
-  
-  const filteredOrcamentos = useMemo(() => {
-    return orcamentos.filter(orc => {
-      const matchSearch = orc.cliente.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          orc.id.toString().includes(searchTerm);
-      const matchStatus = filterStatus === 'todos' || orc.status === filterStatus;
-      return matchSearch && matchStatus;
-    });
-  }, [orcamentos, searchTerm, filterStatus]);
-
-  const totalPendentes = orcamentos.filter(o => o.status === 'pendente').reduce((acc, curr) => acc + curr.total, 0);
-  const countAprovados = orcamentos.filter(o => o.status === 'aprovado').length;
+  // Cálculos para os KPIs
+  const totalEmAberto = orcamentos.filter(o => o.status === 'pendente').reduce((acc, curr) => acc + curr.total, 0);
   const countPendentes = orcamentos.filter(o => o.status === 'pendente').length;
+  const countAprovados = orcamentos.filter(o => o.status === 'aprovado').length;
 
-  const formatMoney = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-  const formatDate = (dateStr: string | Date) => {
-    if(!dateStr) return '-';
-    return new Date(dateStr).toLocaleDateString('pt-BR');
-  }
-
-  const StatusBadge = ({ status }: { status: string }) => {
-    const styles: any = {
-      pendente: 'bg-yellow-50 text-yellow-700 border-yellow-200',
-      aprovado: 'bg-green-50 text-green-700 border-green-200',
-      rejeitado: 'bg-red-50 text-red-700 border-red-200',
-      expirado: 'bg-gray-100 text-gray-500 border-gray-200',
-    };
-    const icons: any = {
-      pendente: <Clock size={12} />,
-      aprovado: <CheckCircle2 size={12} />,
-      rejeitado: <XCircle size={12} />,
-      expirado: <FileText size={12} />
-    };
-    return <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border flex items-center gap-1.5 w-fit uppercase tracking-wide ${styles[status]}`}>{icons[status]} {status}</span>;
-  };
+  if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50/50 p-4 md:p-6 space-y-6">
+    <div className="min-h-screen w-full bg-[#F8FAFC] text-slate-800 font-sans overflow-x-hidden pb-20">
       
-      {/* HEADER */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-xl md:text-2xl font-black text-gray-800 flex items-center gap-2">Orçamentos</h1>
-          <p className="text-gray-500 text-xs md:text-sm">Gerencie cotações e propostas comerciais.</p>
+      <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8 space-y-6 md:space-y-8">
+        
+        {/* HEADER & AÇÃO PRINCIPAL */}
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 print:hidden">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900">Orçamentos</h1>
+            <p className="text-sm text-slate-500 mt-1">Gerencie cotações e propostas comerciais.</p>
+          </div>
+          
+          <button 
+            className="w-full sm:w-auto px-5 py-2.5 bg-blue-600 rounded-xl text-sm font-bold text-white hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-md shadow-blue-200 active:scale-95 cursor-pointer"
+          >
+            <Plus size={18} /> Novo Orçamento
+          </button>
         </div>
-        <button 
-          onClick={() => setIsCreating(true)}
-          className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-md transition-all text-sm font-bold active:scale-95 cursor-pointer"
-        >
-          <Plus size={18} /> Novo Orçamento
-        </button>
-      </div>
 
-      {/* KPI CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <KPICard title="Em Aberto (R$)" value={formatMoney(totalPendentes)} icon={<Calculator size={20} />} color="bg-yellow-50 border-yellow-100" textColor="text-yellow-700" />
-        <KPICard title="Propostas Pendentes" value={countPendentes} icon={<Clock size={20} />} color="bg-blue-50 border-blue-100" textColor="text-blue-700" />
-        <KPICard title="Aprovados Hoje" value={countAprovados} icon={<CheckCircle2 size={20} />} color="bg-green-50 border-green-100" textColor="text-green-700" />
-      </div>
+        {/* CARDS DE RESUMO (KPIs) */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-6 print:hidden">
+          {/* KPI 1: Em Aberto */}
+          <div className="bg-white p-5 rounded-2xl shadow-sm border border-amber-100 flex items-center justify-between relative overflow-hidden group">
+            <div className="absolute -right-6 -top-6 w-24 h-24 bg-amber-50 rounded-full group-hover:scale-110 transition-transform"></div>
+            <div className="relative z-10 flex-1 min-w-0">
+              <p className="text-[11px] font-black uppercase tracking-wider text-amber-600 mb-1">Em Aberto (R$)</p>
+              <h3 className="text-2xl md:text-3xl font-black text-slate-800 truncate">{formatCurrency(totalEmAberto)}</h3>
+            </div>
+            <div className="relative z-10 p-3 bg-amber-100 text-amber-600 rounded-xl shrink-0">
+              <Calculator size={24} />
+            </div>
+          </div>
+          
+          {/* KPI 2: Propostas Pendentes */}
+          <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-100 flex items-center justify-between relative overflow-hidden group">
+            <div className="absolute -right-6 -top-6 w-24 h-24 bg-blue-50 rounded-full group-hover:scale-110 transition-transform"></div>
+            <div className="relative z-10 flex-1 min-w-0">
+              <p className="text-[11px] font-black uppercase tracking-wider text-blue-600 mb-1">Propostas Pendentes</p>
+              <h3 className="text-2xl md:text-3xl font-black text-slate-800 truncate">{countPendentes}</h3>
+            </div>
+            <div className="relative z-10 p-3 bg-blue-100 text-blue-600 rounded-xl shrink-0">
+              <FileSignature size={24} />
+            </div>
+          </div>
 
-      {/* FILTROS */}
-      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-4">
-        <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
-          <div className="relative w-full md:w-96">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+          {/* KPI 3: Aprovados Hoje */}
+          <div className="bg-white p-5 rounded-2xl shadow-sm border border-emerald-100 flex items-center justify-between relative overflow-hidden group">
+            <div className="absolute -right-6 -top-6 w-24 h-24 bg-emerald-50 rounded-full group-hover:scale-110 transition-transform"></div>
+            <div className="relative z-10 flex-1 min-w-0">
+              <p className="text-[11px] font-black uppercase tracking-wider text-emerald-600 mb-1">Aprovados Hoje</p>
+              <h3 className="text-2xl md:text-3xl font-black text-slate-800 truncate">{countAprovados}</h3>
+            </div>
+            <div className="relative z-10 p-3 bg-emerald-100 text-emerald-600 rounded-xl shrink-0">
+              <CheckCircle2 size={24} />
+            </div>
+          </div>
+        </div>
+
+        {/* BARRA DE CONTROLES (BUSCA E TABS) */}
+        <div className="bg-white p-2 md:p-3 rounded-2xl shadow-sm border border-slate-200 flex flex-col lg:flex-row gap-3 items-center justify-between print:hidden">
+          
+          {/* Busca */}
+          <div className="relative w-full lg:w-96 shrink-0 px-1 md:px-0">
+            <Search className="absolute left-4 md:left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input 
               type="text" 
               placeholder="Buscar cliente ou nº do orçamento..." 
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 lg:border-none rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-slate-400 font-medium text-slate-700" 
+              value={searchTerm} 
+              onChange={(e) => setSearchTerm(e.target.value)} 
             />
           </div>
-          <div className="flex bg-gray-100 p-1 rounded-lg w-full md:w-auto overflow-x-auto no-scrollbar">
-            {['todos', 'pendente', 'aprovado', 'rejeitado'].map((s) => (
-              <button key={s} onClick={() => setFilterStatus(s as any)} className={`flex-1 md:flex-none px-4 py-1.5 rounded-md text-xs font-bold capitalize transition-all cursor-pointer ${filterStatus === s ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
-                {s}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
 
-      {/* LISTAGEM */}
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-        {/* ... (Manter código da tabela igual ao anterior) ... */}
-        {/* DESKTOP TABLE */}
-        <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Nº</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Cliente</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Emissão / Validade</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Total</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-center">Status</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-right"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filteredOrcamentos.map((orc) => (
-                <tr 
-                    key={orc.id} 
-                    onClick={() => setSelectedOrcamento(orc)}
-                    className="hover:bg-blue-50/30 transition-colors cursor-pointer group"
+          {/* Tabs Responsivas */}
+          <div className="w-full lg:w-auto overflow-x-auto no-scrollbar pb-1 md:pb-0 px-1 md:px-0">
+            <div className="flex gap-2 w-max">
+              {[
+                { id: 'todos', label: 'Todos' },
+                { id: 'pendente', label: 'Pendente' },
+                { id: 'aprovado', label: 'Aprovado' },
+                { id: 'rejeitado', label: 'Rejeitado' }
+              ].map((tab) => (
+                <button 
+                  key={tab.id} 
+                  onClick={() => setStatusFilter(tab.id)} 
+                  className={`px-4 py-2 text-xs md:text-sm font-semibold rounded-xl transition-all whitespace-nowrap shrink-0 cursor-pointer ${
+                    statusFilter === tab.id 
+                      ? 'bg-slate-800 text-white shadow-md' 
+                      : 'bg-transparent text-slate-500 hover:bg-slate-100 hover:text-slate-700'
+                  }`}
                 >
-                  <td className="px-6 py-4 font-mono text-sm text-blue-600 font-bold">#{orc.id}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                        <div className="p-1.5 bg-gray-100 rounded-full text-gray-500"><User size={14}/></div>
-                        <span className="text-sm font-bold text-gray-800">{orc.cliente}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-xs text-gray-500">
-                        <span className="font-medium text-gray-700">{formatDate(orc.dataEmissao)}</span>
-                        <span className="mx-1 text-gray-300">|</span> 
-                        Até {formatDate(orc.validade)}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm font-bold text-gray-800">{formatMoney(orc.total)}</td>
-                  <td className="px-6 py-4 flex justify-center"><StatusBadge status={orc.status} /></td>
-                  <td className="px-6 py-4 text-right">
-                    <ChevronRight size={20} className="ml-auto text-gray-300 group-hover:text-blue-600 transition-colors" />
-                  </td>
-                </tr>
+                  {tab.label}
+                </button>
               ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* MOBILE LIST */}
-        <div className="md:hidden divide-y divide-gray-100">
-          {filteredOrcamentos.map((orc) => (
-            <div 
-                key={orc.id} 
-                onClick={() => setSelectedOrcamento(orc)} 
-                className="p-4 active:bg-gray-50 transition-colors cursor-pointer flex justify-between items-center group"
-            >
-              <div className="flex gap-3">
-                <div className={`p-2.5 rounded-xl h-fit ${orc.status === 'aprovado' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'}`}>
-                  <FileText size={20} />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-black text-blue-600">#{orc.id}</span>
-                    <span className="text-xs text-gray-400">• {formatDate(orc.dataEmissao)}</span>
-                  </div>
-                  <h4 className="text-sm font-bold text-gray-800 mb-0.5">{orc.cliente}</h4>
-                  <p className="text-xs font-medium text-gray-500 mb-2">{formatMoney(orc.total)}</p>
-                  <StatusBadge status={orc.status} />
-                </div>
-              </div>
-              <ChevronRight size={20} className="text-gray-300 group-hover:text-blue-500 transition-colors" />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* MODAL DETALHES (Renderizado como antes) */}
-      {selectedOrcamento && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95">
-            <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-              <div>
-                <h2 className="text-lg font-bold text-gray-800">Orçamento #{selectedOrcamento.id}</h2>
-                <p className="text-xs text-gray-500 flex items-center gap-1"><Calendar size={10}/> Emitido em {formatDate(selectedOrcamento.dataEmissao)}</p>
-              </div>
-              <button onClick={() => setSelectedOrcamento(null)} className="text-gray-400 hover:bg-gray-200 p-1 rounded-full cursor-pointer"><XCircle size={24} /></button>
-            </div>
-
-            <div className="p-6 overflow-y-auto space-y-6">
-              
-              {/* Header Status + Cliente */}
-              <div className="flex flex-col md:flex-row gap-4">
-                  <div className="flex-1 p-4 border border-gray-100 rounded-xl bg-gray-50/50">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Cliente</span>
-                      <div className="font-bold text-gray-800 text-lg">{selectedOrcamento.cliente}</div>
-                      <div className="text-xs text-gray-500 font-mono mt-1">{selectedOrcamento.documento || "Documento não informado"}</div>
-                  </div>
-                  <div className="w-full md:w-48 p-4 border border-gray-100 rounded-xl bg-gray-50/50 flex flex-col justify-center items-center">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">Situação</span>
-                      <StatusBadge status={selectedOrcamento.status} />
-                  </div>
-              </div>
-
-              {/* Itens */}
-              <div>
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2"><FileText size={14}/> Itens do Orçamento</h3>
-                <div className="border border-gray-200 rounded-xl overflow-hidden">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-gray-50 text-gray-500 text-[10px] uppercase font-bold">
-                      <tr>
-                        <th className="px-4 py-3">Produto</th>
-                        <th className="px-4 py-3 text-center">Qtd</th>
-                        <th className="px-4 py-3 text-right">Unit.</th>
-                        <th className="px-4 py-3 text-right">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {selectedOrcamento.itens.map((item, idx) => (
-                        <tr key={idx} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 text-gray-700 font-medium">{item.produto}</td>
-                          <td className="px-4 py-3 text-center text-gray-500">{item.qtd}</td>
-                          <td className="px-4 py-3 text-right text-gray-500">{formatMoney(item.valorUnit)}</td>
-                          <td className="px-4 py-3 text-right font-bold text-gray-800">{formatMoney(item.total)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <div className="bg-blue-50/50 px-6 py-4 flex justify-between items-center border-t border-blue-100">
-                    <span className="text-xs font-bold text-blue-900 uppercase tracking-widest">Valor Total</span>
-                    <span className="text-xl font-black text-blue-700">{formatMoney(selectedOrcamento.total)}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Observações */}
-              {selectedOrcamento.observacao && (
-                  <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-100 text-sm text-yellow-800">
-                      <span className="font-bold block mb-1 text-xs uppercase opacity-70">Observações:</span>
-                      {selectedOrcamento.observacao}
-                  </div>
-              )}
-
-              {/* Ações */}
-              <div className="pt-2 border-t border-gray-100 flex flex-col md:flex-row gap-3 justify-end">
-                <button className="py-3 px-6 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-50 flex items-center justify-center gap-2 cursor-pointer shadow-sm">
-                    <Printer size={18} /> Imprimir / PDF
-                </button>
-
-                {selectedOrcamento.status === 'pendente' && (
-                    <>
-                        <button 
-                            onClick={() => handleStatusChange('rejeitado')}
-                            disabled={isProcessing}
-                            className="py-3 px-6 bg-red-50 text-red-700 border border-red-100 rounded-xl font-bold hover:bg-red-100 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                        >
-                            {isProcessing ? <Loader2 className="animate-spin" size={18}/> : <XCircle size={18} />} Rejeitar
-                        </button>
-                        <button 
-                            onClick={() => handleStatusChange('aprovado')}
-                            disabled={isProcessing}
-                            className="py-3 px-6 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 shadow-lg shadow-green-100 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                        >
-                            {isProcessing ? <Loader2 className="animate-spin" size={18}/> : <CheckCircle2 size={18} />} Aprovar & Converter
-                        </button>
-                    </>
-                )}
-                
-                {selectedOrcamento.status === 'aprovado' && (
-                    <div className="flex items-center gap-2 text-green-700 bg-green-50 px-4 py-2 rounded-xl border border-green-100 font-bold text-sm">
-                        <CheckCircle2 size={18}/> Orçamento já aprovado
-                    </div>
-                )}
-              </div>
-
             </div>
           </div>
         </div>
-      )}
 
-      {/* MODAL DE NOVO ORÇAMENTO (Usando formData e handleSaveOrcamento atualizados) */}
-      {isCreating && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-5">
-                
-                {/* Modal Header */}
-                <div className="bg-blue-600 px-6 py-4 flex justify-between items-center text-white">
-                    <div>
-                        <h2 className="text-lg font-bold flex items-center gap-2"><Plus size={20}/> Novo Orçamento</h2>
-                        <p className="text-xs text-blue-100 opacity-80">Preencha os dados para gerar a proposta.</p>
-                    </div>
-                    <button onClick={() => setIsCreating(false)} className="text-white/80 hover:bg-white/20 p-1.5 rounded-full cursor-pointer"><XCircle size={24} /></button>
-                </div>
+        {/* LISTAGEM DE ORÇAMENTOS */}
+        <div className="bg-transparent md:bg-white md:rounded-3xl md:shadow-sm md:border md:border-slate-200 overflow-hidden">
+          
+          {/* CABEÇALHO DA TABELA (Visível apenas Desktop) */}
+          <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-4 border-b border-slate-100 bg-slate-50/50 text-[11px] font-black text-slate-400 uppercase tracking-widest">
+            <div className="col-span-1">Nº</div>
+            <div className="col-span-4">Cliente</div>
+            <div className="col-span-3">Emissão / Validade</div>
+            <div className="col-span-2">Total</div>
+            <div className="col-span-2 text-center">Status</div>
+          </div>
 
-                {/* Modal Body */}
-                <div className="p-6 overflow-y-auto space-y-6 flex-1">
+          {/* CORPO DA LISTA */}
+          <div className="flex flex-col gap-3 md:gap-0">
+            {filteredOrcamentos.map((orcamento, index) => {
+              const status = getStatusConfig(orcamento.status);
+              
+              return (
+                <div 
+                  key={orcamento.id} 
+                  className={`bg-white md:bg-transparent p-4 md:p-6 rounded-2xl md:rounded-none shadow-sm md:shadow-none border border-slate-200 md:border-none flex flex-col md:grid md:grid-cols-12 md:gap-4 md:items-center cursor-pointer group transition-all hover:bg-slate-50/80 ${index !== filteredOrcamentos.length - 1 ? 'md:border-b md:border-slate-100' : ''}`}
+                >
+                  
+                  {/* Linha Superior (Mobile) / Coluna 1 e 2 (Desktop) */}
+                  <div className="flex justify-between items-center md:contents mb-3 md:mb-0">
                     
-                    {/* Dados do Cliente */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-500 uppercase">Nome do Cliente <span className="text-red-500">*</span></label>
-                            <input 
-                                type="text" 
-                                className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                                placeholder="Ex: João Silva ou Empresa XYZ"
-                                value={formData.cliente}
-                                onChange={(e) => setFormData({...formData, cliente: e.target.value})}
-                            />
+                    <div className="md:col-span-5 flex items-center gap-3 min-w-0 flex-1">
+                      {/* Número no mobile fica discreto, no desktop tem sua coluna */}
+                      <span className="hidden md:block md:col-span-1 font-black text-blue-600 bg-blue-50 px-2 py-1 rounded-md text-sm border border-blue-100 shrink-0">
+                        {orcamento.id}
+                      </span>
+                      
+                      <div className="w-10 h-10 md:w-10 md:h-10 rounded-full flex items-center justify-center font-bold text-xs md:text-sm text-white shadow-inner bg-gradient-to-br from-blue-500 to-indigo-600 shrink-0">
+                        {getInitials(orcamento.cliente)}
+                      </div>
+                      
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <div className="md:hidden flex items-center gap-2 mb-0.5">
+                          <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 shrink-0">{orcamento.id}</span>
                         </div>
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-500 uppercase">Documento (CPF / CNPJ)</label>
-                            <input 
-                                type="text" 
-                                maxLength={18}
-                                className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                                placeholder="CPF ou CNPJ"
-                                value={formData.documento}
-                                onChange={handleDocumentoChange}
-                            />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-500 uppercase">Validade da Proposta</label>
-                            <input 
-                                type="date" 
-                                className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                                value={formData.validade}
-                                onChange={(e) => setFormData({...formData, validade: e.target.value})}
-                            />
-                        </div>
+                        <p className="font-bold text-slate-800 text-sm md:text-base truncate group-hover:text-blue-600 transition-colors">
+                          {orcamento.cliente}
+                        </p>
+                      </div>
                     </div>
-
-                    <hr className="border-gray-100"/>
-
-                    {/* Itens */}
-                    <div>
-                        <div className="flex justify-between items-center mb-3">
-                            <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2"><FileText size={16}/> Itens / Serviços</h3>
-                            <button 
-                                onClick={handleAddItem}
-                                className="text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 transition-colors"
-                            >
-                                <Plus size={14}/> Adicionar Item
-                            </button>
-                        </div>
-
-                        <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50/30">
-                            {formData.itens.length === 0 ? (
-                                <div className="p-8 text-center text-gray-400 text-sm">
-                                    Nenhum item adicionado. Clique em "Adicionar Item" para começar.
-                                </div>
-                            ) : (
-                                <table className="w-full text-left text-sm">
-                                    <thead className="bg-gray-100 text-gray-500 text-[10px] uppercase font-bold">
-                                        <tr>
-                                            <th className="px-4 py-2 w-[40%]">Descrição</th>
-                                            <th className="px-4 py-2 w-[15%] text-center">Qtd</th>
-                                            <th className="px-4 py-2 w-[20%] text-right">Valor Unit.</th>
-                                            <th className="px-4 py-2 w-[20%] text-right">Total</th>
-                                            <th className="px-4 py-2 w-[5%]"></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-200 bg-white">
-                                        {formData.itens.map((item) => (
-                                            <tr key={item.id}>
-                                                <td className="px-2 py-2">
-                                                    <input 
-                                                        type="text" 
-                                                        placeholder="Nome do produto ou serviço"
-                                                        className="w-full p-1.5 border border-gray-200 rounded text-sm focus:border-blue-500 outline-none"
-                                                        value={item.produto}
-                                                        onChange={(e) => handleUpdateItem(item.id, 'produto', e.target.value)}
-                                                    />
-                                                </td>
-                                                <td className="px-2 py-2">
-                                                    <input 
-                                                        type="number" 
-                                                        min="1"
-                                                        className="w-full p-1.5 border border-gray-200 rounded text-sm text-center focus:border-blue-500 outline-none"
-                                                        value={item.qtd}
-                                                        onChange={(e) => handleUpdateItem(item.id, 'qtd', Number(e.target.value))}
-                                                    />
-                                                </td>
-                                                <td className="px-2 py-2">
-                                                    <input 
-                                                        type="number" 
-                                                        min="0"
-                                                        step="0.01"
-                                                        className="w-full p-1.5 border border-gray-200 rounded text-sm text-right focus:border-blue-500 outline-none"
-                                                        value={item.valorUnit}
-                                                        onChange={(e) => handleUpdateItem(item.id, 'valorUnit', Number(e.target.value))}
-                                                    />
-                                                </td>
-                                                <td className="px-4 py-2 text-right font-bold text-gray-700">
-                                                    {formatMoney(item.total)}
-                                                </td>
-                                                <td className="px-2 py-2 text-center">
-                                                    <button 
-                                                        onClick={() => handleRemoveItem(item.id)}
-                                                        className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded transition-colors"
-                                                    >
-                                                        <Trash2 size={16}/>
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            )}
-                            
-                            {/* Total Footer */}
-                            <div className="bg-gray-100 px-6 py-3 flex justify-end items-center gap-4 border-t border-gray-200">
-                                <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Total Estimado</span>
-                                <span className="text-xl font-black text-blue-700">{formatMoney(calculateTotalOrcamento())}</span>
-                            </div>
-                        </div>
+                    
+                    {/* Badge visível no mobile no topo à direita */}
+                    <div className="md:hidden shrink-0">
+                      <span className={`px-2 py-1 rounded-md text-[10px] font-bold flex items-center gap-1 border ${status.bg} ${status.color} ${status.border}`}>
+                        {status.icon} {status.label}
+                      </span>
                     </div>
+                  </div>
 
-                    {/* Observações */}
-                    <div className="space-y-1">
-                        <label className="text-xs font-bold text-gray-500 uppercase">Observações Internas</label>
-                        <textarea 
-                            rows={3}
-                            className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none"
-                            placeholder="Ex: Entrega prevista para semana que vem..."
-                            value={formData.observacao}
-                            onChange={(e) => setFormData({...formData, observacao: e.target.value})}
-                        />
+                  {/* Informações Flex (Datas e Valor) */}
+                  <div className="flex items-center justify-between md:contents pt-3 border-t border-slate-100 md:border-none md:pt-0">
+                    
+                    <div className="md:col-span-3 flex flex-col">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 md:hidden mb-0.5">Emissão / Validade</span>
+                      <span className="text-sm font-bold text-slate-700">
+                        {orcamento.emissao}
+                      </span>
+                      <span className="text-xs font-medium text-slate-400 flex items-center gap-1">
+                        Até {orcamento.validade}
+                      </span>
                     </div>
-                </div>
+                    
+                    <div className="md:col-span-2 flex flex-col items-end md:items-start md:justify-center">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 md:hidden mb-0.5">Total</span>
+                      <span className="text-base md:text-lg font-black text-slate-800">
+                        {formatCurrency(orcamento.total)}
+                      </span>
+                    </div>
+                  </div>
 
-                {/* Modal Footer Buttons */}
-                <div className="p-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
-                    <button 
-                        onClick={() => setIsCreating(false)}
-                        className="px-6 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-bold hover:bg-gray-100 transition-colors text-sm"
-                    >
-                        Cancelar
-                    </button>
-                    <button 
-                        onClick={handleSaveOrcamento}
-                        disabled={isProcessing}
-                        className="px-6 py-2.5 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {isProcessing ? <Loader2 className="animate-spin" size={18}/> : <Save size={18}/>} 
-                        Salvar Orçamento
-                    </button>
+                  {/* Status e Botão (Desktop) */}
+                  <div className="hidden md:flex md:col-span-2 items-center justify-between">
+                    <span className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1.5 border ${status.bg} ${status.color} ${status.border}`}>
+                      {status.icon} <span className="uppercase tracking-wide">{status.label}</span>
+                    </span>
+                    <ChevronRight size={20} className="text-slate-300 group-hover:text-blue-500 transition-colors" />
+                  </div>
                 </div>
-            </div>
+              );
+            })}
+
+            {filteredOrcamentos.length === 0 && (
+              <div className="text-center py-20 px-4">
+                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Search className="text-slate-400" size={24} />
+                </div>
+                <h3 className="text-lg font-bold text-slate-700 mb-1">Nenhum orçamento encontrado</h3>
+                <p className="text-sm text-slate-500">Altere o filtro ou o termo de busca para encontrar o que procura.</p>
+              </div>
+            )}
+          </div>
         </div>
-      )}
 
-      {/* --- MODAIS DE ERRO E AVISO --- */}
-      {showWarningModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="bg-white w-full max-w-sm rounded-2xl shadow-xl overflow-hidden p-6 animate-in zoom-in-95 flex flex-col items-center text-center">
-                <div className="w-12 h-12 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center mb-4">
-                    <AlertTriangle size={24} />
-                </div>
-                <h3 className="text-lg font-black text-gray-800 mb-2">Atenção!</h3>
-                <p className="text-sm text-gray-500 mb-6 leading-relaxed">
-                    Você não pode salvar um orçamento vazio.<br/>
-                    Por favor, adicione pelo menos um item ou serviço antes de continuar.
-                </p>
-                <button 
-                    onClick={() => setShowWarningModal(false)}
-                    className="w-full py-2.5 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 transition-colors"
-                >
-                    Entendi, vou adicionar
-                </button>
-            </div>
-        </div>
-      )}
+      </div>
 
-      {validationError && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="bg-white w-full max-w-sm rounded-2xl shadow-xl overflow-hidden p-6 animate-in zoom-in-95 flex flex-col items-center text-center">
-                <div className="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4">
-                    <AlertCircle size={24} />
-                </div>
-                <h3 className="text-lg font-black text-gray-800 mb-2">Campo Obrigatório</h3>
-                <p className="text-sm text-gray-500 mb-6 leading-relaxed">
-                    {validationError}
-                </p>
-                <button 
-                    onClick={() => setValidationError(null)}
-                    className="w-full py-2.5 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-colors shadow-lg shadow-red-200"
-                >
-                    OK, Entendi
-                </button>
-            </div>
-        </div>
-      )}
-
+      <style jsx global>{`
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
     </div>
   );
 }
-
-const KPICard = ({ title, value, icon, color, textColor }: any) => (
-  <div className={`p-4 rounded-xl border shadow-sm flex items-center justify-between ${color}`}>
-    <div>
-      <p className={`text-[10px] font-bold uppercase tracking-wide opacity-80 ${textColor}`}>{title}</p>
-      <h3 className={`text-2xl font-black mt-1 ${textColor}`}>{value}</h3>
-    </div>
-    <div className="p-3 bg-white/60 rounded-full shadow-sm">{icon}</div>
-  </div>
-);

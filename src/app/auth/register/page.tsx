@@ -4,246 +4,325 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { 
-  Mail, Lock, ArrowRight, Loader2, 
-  Eye, EyeOff, User, ShieldCheck, CheckCircle2, AlertTriangle, X 
+  Mail, Lock, ArrowRight, Loader2, ArrowLeft,
+  User, ShieldCheck, CheckCircle2, 
+  AlertTriangle, Phone, Building2, Inbox, Eye, EyeOff
 } from "lucide-react";
 import { registerUser } from "@/app/actions/auth";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  
+  const [step, setStep] = useState(1);
+  const [personType, setPersonType] = useState<"PF" | "PJ">("PJ");
   const [isLoading, setIsLoading] = useState(false);
-  const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   
-  // Novo estado para o Modal
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    document: "",
+    ie: "",
+    email: "",
+    phone: "",
+    password: "",
+    confirmPassword: ""
+  });
 
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // --- LÓGICA DE MÁSCARAS ---
+  const applyMask = (name: string, value: string) => {
+    const rawValue = value.replace(/\D/g, "");
+
+    switch (name) {
+      case "document":
+        if (personType === "PF") {
+          return rawValue
+            .replace(/(\d{3})(\d)/, "$1.$2")
+            .replace(/(\d{3})(\d)/, "$1.$2")
+            .replace(/(\d{3})(\d{1,2})/, "$1-$2")
+            .substring(0, 14);
+        } else {
+          return rawValue
+            .replace(/(\d{2})(\d)/, "$1.$2")
+            .replace(/(\d{3})(\d)/, "$1.$2")
+            .replace(/(\d{3})(\d)/, "$1/$2")
+            .replace(/(\d{4})(\d{1,2})/, "$1-$2")
+            .substring(0, 18);
+        }
+      case "phone":
+        return rawValue
+          .replace(/(\d{2})(\d)/, "($1) $2")
+          .replace(/(\d{5})(\d)/, "$1-$2")
+          .substring(0, 15);
+      case "ie":
+        return rawValue.substring(0, 15);
+      default:
+        return value;
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    const masked = applyMask(name, value);
+    setFormData((prev) => ({ ...prev, [name]: masked }));
+    if (errorMessage) setErrorMessage(""); // Limpa erro ao digitar
+  };
+
+  // --- VALIDAÇÃO POR ETAPA ---
+  const validateStep = () => {
     setErrorMessage("");
     
-    // Validação de Front-end
-    if (password !== confirmPassword) {
-      setErrorMessage("As senhas não coincidem!");
+    if (step === 1) {
+      if (!formData.name.trim()) return "Todos os campos são obrigatórios.";
+      const docClean = formData.document.replace(/\D/g, "");
+      if (personType === "PF" && docClean.length !== 11) return "CPF inválido.";
+      if (personType === "PJ" && docClean.length !== 14) return "CNPJ inválido.";
+    }
+
+    if (step === 2) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) return "Insira um e-mail válido.";
+      if (formData.phone.replace(/\D/g, "").length < 10) return "Número de celular incompleto.";
+    }
+
+    if (step === 3) {
+      if (formData.password.length < 6) return "A senha deve ter no mínimo 6 caracteres.";
+      if (formData.password !== formData.confirmPassword) return "As senhas não coincidem.";
+    }
+
+    return null;
+  };
+
+  const handleNext = () => {
+    const error = validateStep();
+    if (error) {
+      setErrorMessage(error);
+      return;
+    }
+    setStep(step + 1);
+  };
+
+  const handleFinalize = async () => {
+    const error = validateStep();
+    if (error) {
+      setErrorMessage(error);
       return;
     }
 
     setIsLoading(true);
-
-    const result = await registerUser({ name, email, password });
-
-    if (result.success) {
-      // SUCESSO: Exibe o modal em vez de redirecionar direto
-      setIsLoading(false);
-      setShowSuccessModal(true);
-    } else {
-      setErrorMessage(result.error || "Ocorreu um erro.");
+    try {
+      const result = await registerUser(formData);
+      if (result.success) setStep(4);
+      else setErrorMessage(result.error || "Erro ao criar conta.");
+    } catch (error) {
+      setErrorMessage("Ocorreu um erro inesperado.");
+    } finally {
       setIsLoading(false);
     }
   };
 
-  const handleRedirectToLogin = () => {
-    router.push("/auth/login?success=true");
-  };
+  const steps = [
+    { id: 1, icon: personType === "PJ" ? Building2 : User },
+    { id: 2, icon: Mail },
+    { id: 3, icon: Lock },
+    { id: 4, icon: Inbox },
+  ];
 
   return (
-    <div className="min-h-screen flex w-full bg-white font-sans overflow-hidden relative">
+    <div className="min-h-screen bg-[#eaeff5] flex flex-col items-center justify-center p-4 font-sans">
       
-      {/* LADO ESQUERDO: BRANDING */}
-      <div className="hidden lg:flex w-1/2 bg-[#003366] relative items-center justify-center p-12 overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-full z-0 opacity-20 pointer-events-none">
-           <div className="absolute top-[-20%] left-[-20%] w-[500px] h-[500px] bg-blue-400 rounded-full blur-[100px] animate-pulse"></div>
-           <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-orange-500 rounded-full blur-[120px] animate-pulse"></div>
+      <Link 
+        href="/auth/login" 
+        className="mb-6 flex items-center gap-2 text-slate-500 hover:text-[#2563eb] font-bold text-sm transition-all group"
+      >
+        <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+        Voltar para o Login
+      </Link>
+
+      <div className="bg-white w-full max-w-[480px] rounded-[2.5rem] shadow-[0_10px_40px_rgba(0,0,0,0.06)] overflow-hidden animate-in fade-in zoom-in-95 duration-500">
+        
+        <div className="bg-[#f8fafc] border-b border-gray-100 px-8 py-8">
+          <div className="relative flex justify-between items-center max-w-[280px] mx-auto">
+            <div className="absolute top-1/2 left-0 w-full h-[2px] bg-gray-200 -translate-y-1/2 z-0"></div>
+            <div 
+              className="absolute top-1/2 left-0 h-[2px] bg-[#2563eb] -translate-y-1/2 z-0 transition-all duration-500" 
+              style={{ width: `${((step - 1) / (steps.length - 1)) * 100}%` }}
+            ></div>
+            {steps.map((s) => (
+              <div key={s.id} className="relative z-10">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
+                  step >= s.id ? 'bg-[#2563eb] text-white shadow-lg shadow-blue-100' : 'bg-white border-2 border-gray-200 text-gray-300'
+                }`}>
+                  {step > s.id ? <CheckCircle2 size={18} /> : <s.icon size={18} />}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
-        <div className="relative z-10 flex flex-col items-center text-center space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-1000">
-          <div className="text-white space-y-4 max-w-lg">
-            <ShieldCheck className="w-20 h-20 text-orange-500 mx-auto mb-6 drop-shadow-lg" />
-            <h1 className="text-4xl font-bold tracking-tight">Comece sua jornada!</h1>
-            <p className="text-blue-100 text-lg leading-relaxed font-medium">
-              Junte-se a milhares de empresas que otimizam seus processos com a Datacaixa.
+        <div className="p-8 md:p-12">
+          <div className="flex flex-col items-center mb-8">
+            <img src="/logo-datacaixa-site.png" alt="Datacaixa" className="h-12 mb-4" />
+            <h1 className="text-xl font-bold text-[#0f2133]">
+              {step === 4 ? "Sucesso!" : "Área do Cliente"}
+            </h1>
+            <p className="text-[11px] text-gray-400 mt-1 font-bold uppercase tracking-widest">
+              {step === 4 ? "Cadastro realizado" : `Passo ${step} de 3`}
             </p>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
-            <div className="bg-white/5 backdrop-blur-md p-4 rounded-2xl border border-white/10 text-white">
-               <p className="text-2xl font-bold">100%</p>
-               <p className="text-xs opacity-70 uppercase">Seguro</p>
-            </div>
-            <div className="bg-white/5 backdrop-blur-md p-4 rounded-2xl border border-white/10 text-white">
-               <p className="text-2xl font-bold">Suporte</p>
-               <p className="text-xs opacity-70 uppercase">Especializado</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* LADO DIREITO: FORMULÁRIO DE CADASTRO */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 lg:p-24 bg-gray-50/50 overflow-y-auto">
-        <div className="w-full max-w-md space-y-8 py-12 animate-in fade-in slide-in-from-right-8 duration-700">
-          
-          <div className="text-center lg:text-left">
-            <h2 className="text-3xl font-bold text-gray-900">Criar nova conta</h2>
-            <p className="text-sm text-gray-500 mt-2">Preencha os dados para ativar seu acesso.</p>
           </div>
 
           {errorMessage && (
-            <div className="bg-red-50 text-red-600 p-3 rounded-lg flex items-center gap-2 text-sm">
-              <AlertTriangle size={16} />
-              {errorMessage}
+            <div className="mb-6 bg-red-50 text-red-600 p-3 rounded-xl flex items-center gap-2 text-xs font-bold border border-red-100 animate-shake">
+              <AlertTriangle size={14} /> {errorMessage}
             </div>
           )}
 
-          <form onSubmit={handleRegister} className="space-y-5">
-            
-            {/* INPUT NOME */}
-            <div className={`group relative transition-all duration-300 ${focusedField === 'name' ? 'scale-[1.02]' : ''}`}>
-              <label className="text-xs font-bold text-gray-500 uppercase ml-1 mb-1 block">Nome Completo</label>
-              <div className={`flex items-center border-2 rounded-xl px-4 py-3 bg-white transition-colors ${focusedField === 'name' ? 'border-blue-500 shadow-lg shadow-blue-100' : 'border-gray-200'}`}>
-                <User className={`w-5 h-5 ${focusedField === 'name' ? 'text-blue-500' : 'text-gray-400'}`} />
-                <input 
-                  type="text" 
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  onFocus={() => setFocusedField('name')}
-                  onBlur={() => setFocusedField(null)}
-                  className="w-full ml-3 outline-none text-sm font-medium text-gray-700 bg-transparent"
-                  placeholder="Seu nome completo"
-                  required
-                />
+          {step === 4 ? (
+            <div className="text-center space-y-6 animate-in zoom-in-95 duration-500">
+              <div className="relative mx-auto w-20 h-20">
+                <div className="absolute inset-0 bg-blue-100 rounded-full animate-ping opacity-25"></div>
+                <div className="relative w-20 h-20 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center shadow-inner border border-blue-100">
+                  <Inbox size={38} className="animate-bounce" />
+                </div>
               </div>
-            </div>
-
-            {/* INPUT EMAIL */}
-            <div className={`group relative transition-all duration-300 ${focusedField === 'email' ? 'scale-[1.02]' : ''}`}>
-              <label className="text-xs font-bold text-gray-500 uppercase ml-1 mb-1 block">E-mail Corporativo</label>
-              <div className={`flex items-center border-2 rounded-xl px-4 py-3 bg-white transition-colors ${focusedField === 'email' ? 'border-blue-500 shadow-lg shadow-blue-100' : 'border-gray-200'}`}>
-                <Mail className={`w-5 h-5 ${focusedField === 'email' ? 'text-blue-500' : 'text-gray-400'}`} />
-                <input 
-                  type="email" 
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  onFocus={() => setFocusedField('email')}
-                  onBlur={() => setFocusedField(null)}
-                  className="w-full ml-3 outline-none text-sm font-medium text-gray-700 bg-transparent"
-                  placeholder="exemplo@empresa.com.br"
-                  required
-                />
+              <div className="space-y-3">
+                <h2 className="text-lg font-bold text-[#0f2133]">Verifique seu e-mail</h2>
+                <p className="text-sm text-gray-500 leading-relaxed px-2">
+                  Um link de ativação foi enviado para: <br/>
+                  <span className="text-[#2563eb] font-bold break-all">{formData.email}</span>
+                </p>
               </div>
+              <Link href="/auth/login" className="flex items-center justify-center gap-2 w-full py-4 bg-[#2563eb] text-white rounded-xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-100 transition-all active:scale-95">
+                Acessar minha conta <ArrowRight size={18} />
+              </Link>
             </div>
+          ) : (
+            <div className="space-y-5">
+              {step === 1 && (
+                <div className="space-y-5 animate-in slide-in-from-right-4 duration-300">
+                  <div className="flex p-1 bg-gray-50 rounded-xl gap-1">
+                    {["PJ", "PF"].map((t) => (
+                      <button 
+                        key={t} 
+                        type="button"
+                        onClick={() => {setPersonType(t as any); setFormData(p => ({...p, document: ""}))}} 
+                        className={`flex-1 py-2 text-[10px] font-bold rounded-lg transition-all ${personType === t ? 'bg-white text-[#2563eb] shadow-sm' : 'text-gray-400'}`}
+                      >
+                        {t === "PJ" ? "EMPRESA" : "PESSOA FÍSICA"}
+                      </button>
+                    ))}
+                  </div>
+                  
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">DOCUMENTO ({personType})</label>
+                    <input 
+                      name="document" value={formData.document} onChange={handleInputChange} 
+                      placeholder={personType === "PJ" ? "00.000.000/0000-00" : "000.000.000-00"} 
+                      className="w-full bg-[#f8fafc] border border-gray-100 rounded-xl px-4 py-3.5 text-sm outline-none focus:bg-white focus:ring-2 focus:ring-blue-50 transition-all font-medium" 
+                    />
+                  </div>
 
-            {/* INPUT SENHA */}
-            <div className={`group relative transition-all duration-300 ${focusedField === 'password' ? 'scale-[1.02]' : ''}`}>
-              <label className="text-xs font-bold text-gray-500 uppercase ml-1 mb-1 block">Senha</label>
-              <div className={`flex items-center border-2 rounded-xl px-4 py-3 bg-white transition-colors ${focusedField === 'password' ? 'border-blue-500 shadow-lg shadow-blue-100' : 'border-gray-200'}`}>
-                <Lock className={`w-5 h-5 ${focusedField === 'password' ? 'text-blue-500' : 'text-gray-400'}`} />
-                <input 
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  onFocus={() => setFocusedField('password')}
-                  onBlur={() => setFocusedField(null)}
-                  className="w-full ml-3 outline-none text-sm font-medium text-gray-700 bg-transparent"
-                  placeholder="Mínimo 8 caracteres"
-                  required
-                />
+                  {personType === "PJ" && (
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">INSCRIÇÃO ESTADUAL</label>
+                      <input 
+                        name="ie" value={formData.ie} onChange={handleInputChange} 
+                        placeholder="Número da IE" 
+                        className="w-full bg-[#f8fafc] border border-gray-100 rounded-xl px-4 py-3.5 text-sm outline-none focus:bg-white transition-all font-medium" 
+                      />
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">{personType === "PJ" ? "RAZÃO SOCIAL" : "NOME COMPLETO"}</label>
+                    <input 
+                      name="name" value={formData.name} onChange={handleInputChange} 
+                      placeholder="Insira o nome" 
+                      className="w-full bg-[#f8fafc] border border-gray-100 rounded-xl px-4 py-3.5 text-sm outline-none focus:bg-white transition-all font-medium" 
+                    />
+                  </div>
+                </div>
+              )}
+
+              {step === 2 && (
+                <div className="space-y-5 animate-in slide-in-from-right-4 duration-300">
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">E-MAIL DE ACESSO</label>
+                    <input 
+                      name="email" type="email" value={formData.email} onChange={handleInputChange} 
+                      placeholder="exemplo@email.com" 
+                      className="w-full bg-[#f8fafc] border border-gray-100 rounded-xl px-4 py-3.5 text-sm outline-none focus:bg-white transition-all font-medium" 
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">WHATSAPP / CELULAR</label>
+                    <input 
+                      name="phone" value={formData.phone} onChange={handleInputChange} 
+                      placeholder="(00) 00000-0000" 
+                      className="w-full bg-[#f8fafc] border border-gray-100 rounded-xl px-4 py-3.5 text-sm outline-none focus:bg-white transition-all font-medium" 
+                    />
+                  </div>
+                </div>
+              )}
+
+              {step === 3 && (
+                <div className="space-y-5 animate-in slide-in-from-right-4 duration-300">
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">SENHA</label>
+                    <div className="relative">
+                      <input 
+                        name="password" type={showPassword ? "text" : "password"} value={formData.password} onChange={handleInputChange} 
+                        className="w-full bg-[#f8fafc] border border-gray-100 rounded-xl px-4 py-3.5 text-sm outline-none focus:bg-white transition-all font-medium" 
+                      />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500">
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">CONFIRME A SENHA</label>
+                    <input 
+                      name="confirmPassword" type="password" value={formData.confirmPassword} onChange={handleInputChange} 
+                      className="w-full bg-[#f8fafc] border border-gray-100 rounded-xl px-4 py-3.5 text-sm outline-none focus:bg-white transition-all font-medium" 
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-4">
+                {step > 1 && (
+                  <button 
+                    type="button"
+                    onClick={() => setStep(step - 1)} 
+                    className="px-5 bg-gray-50 text-gray-400 rounded-xl hover:bg-gray-100 transition-all border border-gray-100 flex items-center justify-center cursor-pointer"
+                  >
+                    <ArrowLeft size={20} />
+                  </button>
+                )}
                 <button 
-                  type="button" 
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="text-gray-400 hover:text-gray-600 p-1"
+                  type="button"
+                  onClick={step === 3 ? handleFinalize : handleNext} 
+                  disabled={isLoading}
+                  className="flex-1 bg-[#2563eb] text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-blue-700 shadow-lg shadow-blue-100 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
                 >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  {isLoading ? <Loader2 className="animate-spin" size={20} /> : (step === 3 ? "Finalizar Cadastro" : "Próximo Passo")}
+                  {!isLoading && <ArrowRight size={18} />}
                 </button>
               </div>
-            </div>
 
-            {/* CONFIRMAR SENHA */}
-            <div className={`group relative transition-all duration-300 ${focusedField === 'confirm' ? 'scale-[1.02]' : ''}`}>
-              <label className="text-xs font-bold text-gray-500 uppercase ml-1 mb-1 block">Confirmar Senha</label>
-              <div className={`flex items-center border-2 rounded-xl px-4 py-3 bg-white transition-colors ${focusedField === 'confirm' ? 'border-blue-500 shadow-lg shadow-blue-100' : 'border-gray-200'}`}>
-                <Lock className={`w-5 h-5 ${focusedField === 'confirm' ? 'text-blue-500' : 'text-gray-400'}`} />
-                <input 
-                  type={showPassword ? "text" : "password"}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  onFocus={() => setFocusedField('confirm')}
-                  onBlur={() => setFocusedField(null)}
-                  className="w-full ml-3 outline-none text-sm font-medium text-gray-700 bg-transparent"
-                  placeholder="Repita sua senha"
-                  required
-                />
+              <div className="text-center pt-6">
+                <p className="text-xs text-gray-400 font-medium">
+                  Já possui uma conta? <Link href="/auth/login" className="text-[#2563eb] font-bold hover:underline cursor-pointer">Entrar</Link>
+                </p>
               </div>
             </div>
-
-            <button 
-              type="submit" 
-              disabled={isLoading}
-              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-xl shadow-xl shadow-orange-200 transition-all transform active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-70 cursor-pointer group"
-            >
-              {isLoading ? (
-                <Loader2 className="animate-spin" size={20} />
-              ) : (
-                <>
-                  Criar minha conta
-                  <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                </>
-              )}
-            </button>
-          </form>
-
-          <div className="text-center">
-            <p className="text-sm text-gray-500">
-              Já possui uma conta?{' '}
-              <Link 
-                href="/auth/login" 
-                className="font-bold text-blue-600 hover:text-blue-800 transition-colors hover:underline cursor-pointer"
-              >
-                Fazer login
-              </Link>
-            </p>
-          </div>
-          
-          <div className="flex items-center justify-center gap-2 text-[10px] text-gray-400 uppercase tracking-widest mt-8 opacity-60">
-            <CheckCircle2 size={12} className="text-green-500" />
-            Dados protegidos pela LGPD
-          </div>
-
+          )}
         </div>
       </div>
 
-      {/* --- MODAL DE SUCESSO --- */}
-      {showSuccessModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center space-y-6 animate-in zoom-in-95 duration-300 relative">
-            
-            {/* Ícone de Sucesso Animado */}
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce-slow">
-              <CheckCircle2 className="w-10 h-10 text-green-600" />
-            </div>
-
-            <div className="space-y-2">
-              <h3 className="text-2xl font-bold text-gray-900">Conta Criada!</h3>
-              <p className="text-gray-500 text-sm leading-relaxed">
-                Seu cadastro foi realizado com sucesso. Agora você já pode acessar a plataforma.
-              </p>
-            </div>
-
-            <button 
-              onClick={handleRedirectToLogin}
-              className="w-full bg-[#003366] hover:bg-blue-900 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-900/20 transition-all transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
-            >
-              Ir para o Login
-              <ArrowRight size={18} />
-            </button>
-          </div>
-        </div>
-      )}
-
+      <div className="mt-8 flex items-center gap-2 text-gray-400 text-[10px] font-bold uppercase tracking-widest opacity-60">
+        <ShieldCheck size={14} className="text-green-500" /> AMBIENTE SEGURO
+      </div>
     </div>
   );
 }

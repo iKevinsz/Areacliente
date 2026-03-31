@@ -13,10 +13,43 @@ export default function QRCodePage() {
   const svgRef = useRef<any>(null);
 
   // Função para copiar o link
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(menuLink);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+ const handleCopyLink = () => {
+    // 1. Tenta API moderna (Requer HTTPS ou Localhost)
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(menuLink)
+        .then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        })
+        .catch((err) => console.error("Erro ao copiar (Modern):", err));
+    } else {
+      // 2. Fallback para conexões não seguras (HTTP/IPs locais)
+      try {
+        const textArea = document.createElement("textarea");
+        textArea.value = menuLink;
+        
+        // Esconde o elemento visualmente
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        textArea.style.top = "0";
+        
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        
+        if (successful) {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        } else {
+          alert("Não foi possível copiar automaticamente.");
+        }
+      } catch (err) {
+        console.error("Erro ao copiar (Fallback):", err);
+      }
+    }
   };
 
   // Função para baixar o QR Code como PNG

@@ -1,343 +1,269 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  Search, Calendar, FileText, CheckCircle2, AlertTriangle, 
-  X, Printer, Download, RefreshCw, ChevronRight, FileX, Loader2
+  Search, RefreshCw, FileText, CheckCircle2, 
+  AlertCircle, ChevronRight, Clock, AlertTriangle, Check
 } from 'lucide-react';
 
-// --- TIPAGEM (Compatível com seu Prisma futuramente) ---
-export interface PedidoNfeDTO {
-  id: number;
-  clienteNome: string;
-  clienteDoc: string; // CPF ou CNPJ
+// --- TIPAGEM ---
+type StatusSefaz = 'pendente' | 'autorizada' | 'erro';
+
+interface PedidoNFe {
+  id: string;
+  cliente: string;
+  documento: string;
   data: string;
-  total: number;
-  status: 'pendente' | 'autorizada' | 'erro' | 'cancelada';
-  nfeChave?: string;
-  itens: { produto: string; qtd: number; valor: number }[];
+  valor: number;
+  status: StatusSefaz;
 }
 
-interface PedidosNfeClientProps {
-  initialPedidos: PedidoNfeDTO[];
-}
+// Dados baseados na sua imagem
+const MOCK_PEDIDOS: PedidoNFe[] = [
+  { id: '#1020', cliente: 'Mercado Silva LTDA', documento: '12.345.678/0001-90', data: '27/12/2023', valor: 1450.00, status: 'pendente' },
+  { id: '#1019', cliente: 'João da Silva', documento: '123.456.789-00', data: '26/12/2023', valor: 89.90, status: 'autorizada' },
+  { id: '#1018', cliente: 'Padaria Central', documento: '98.765.432/0001-10', data: '25/12/2023', valor: 5000.00, status: 'erro' },
+];
 
-export default function PedidosNfeClient({ initialPedidos }: PedidosNfeClientProps) {
-  const [pedidos, setPedidos] = useState<PedidoNfeDTO[]>(initialPedidos);
+export default function EmissaoNfeList() {
+  const [mounted, setMounted] = useState(false);
+  const [pedidos, setPedidos] = useState<PedidoNFe[]>(MOCK_PEDIDOS);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'todos' | 'pendente' | 'autorizada' | 'erro'>('todos');
-  
-  const [selectedPedido, setSelectedPedido] = useState<PedidoNfeDTO | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
-  
-  // NOVO ESTADO: Controle de atualização global Sefaz
+  const [statusFilter, setStatusFilter] = useState<string>('todos');
   const [isUpdating, setIsUpdating] = useState(false);
-  
-  const [feedback, setFeedback] = useState<{type: 'success'|'error', msg: string} | null>(null);
 
-  // Filtros
-  const filteredPedidos = useMemo(() => {
-    return pedidos.filter(p => {
-      const matchSearch = p.clienteNome.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          p.id.toString().includes(searchTerm) ||
-                          p.clienteDoc.includes(searchTerm);
-      const matchStatus = filterStatus === 'todos' || p.status === filterStatus;
-      return matchSearch && matchStatus;
-    });
-  }, [pedidos, searchTerm, filterStatus]);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const formatCurrency = (val: number) => 
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+
+  const handleUpdateSefaz = () => {
+    setIsUpdating(true);
+    setTimeout(() => setIsUpdating(false), 1500); // Simula atualização
+  };
+
+  const getStatusConfig = (status: StatusSefaz) => {
+    const configs = {
+      pendente: { color: "text-amber-700", bg: "bg-amber-100", border: "border-amber-200", label: "Pendente", icon: <Clock size={14} /> },
+      autorizada: { color: "text-emerald-700", bg: "bg-emerald-100", border: "border-emerald-200", label: "Autorizada", icon: <Check size={14} /> },
+      erro: { color: "text-rose-700", bg: "bg-rose-100", border: "border-rose-200", label: "Erro", icon: <AlertTriangle size={14} /> },
+    };
+    return configs[status];
+  };
+
+  const filteredPedidos = pedidos.filter(pedido => {
+    const matchSearch = pedido.cliente.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                        pedido.documento.includes(searchTerm) || 
+                        pedido.id.includes(searchTerm);
+    const matchStatus = statusFilter === 'todos' || pedido.status === statusFilter;
+    return matchSearch && matchStatus;
+  });
 
   // KPIs
-  const totalPendentes = pedidos.filter(p => p.status === 'pendente').length;
-  const totalAutorizadas = pedidos.filter(p => p.status === 'autorizada').length;
-  const totalErros = pedidos.filter(p => p.status === 'erro').length;
+  const countPendentes = pedidos.filter(p => p.status === 'pendente').length;
+  const countAutorizadas = pedidos.filter(p => p.status === 'autorizada').length;
+  const countErros = pedidos.filter(p => p.status === 'erro').length;
 
-  // --- NOVA FUNÇÃO: Simulação de Atualização Sefaz ---
-  const handleUpdateSefaz = () => {
-    if (isUpdating) return;
-    setIsUpdating(true);
-
-    // Simula delay de rede (Conexão API Sefaz)
-    setTimeout(() => {
-        setIsUpdating(false);
-        setFeedback({ 
-            type: 'success', 
-            msg: 'Sincronização com Sefaz concluída! Status das notas atualizados.' 
-        });
-        // Aqui você poderia recarregar os dados do servidor se fosse real
-        // router.refresh(); 
-    }, 2500);
-  };
-
-  // Simulação de Emissão de NFe Individual
-  const handleEmitirNfe = async () => {
-    if (!selectedPedido) return;
-    setIsGenerating(true);
-
-    // AQUI ENTRARIA A CHAMADA PARA A SERVER ACTION REAL
-    // await emitirNfeAction(selectedPedido.id);
-    
-    setTimeout(() => {
-      setIsGenerating(false);
-      // Atualiza estado localmente para simular sucesso
-      setPedidos(prev => prev.map(p => p.id === selectedPedido.id ? { ...p, status: 'autorizada', nfeChave: '352309...' } : p));
-      setSelectedPedido(null);
-      setFeedback({ type: 'success', msg: `NFe do pedido #${selectedPedido.id} emitida com sucesso!` });
-    }, 2000);
-  };
-
-  const formatMoney = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-  const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('pt-BR');
-
-  const StatusBadge = ({ status }: { status: string }) => {
-    const styles = {
-      pendente: 'bg-yellow-50 text-yellow-700 border-yellow-200',
-      autorizada: 'bg-green-50 text-green-700 border-green-200',
-      erro: 'bg-red-50 text-red-700 border-red-200',
-      cancelada: 'bg-gray-100 text-gray-500 border-gray-200',
-    };
-    const icons = {
-      pendente: <AlertTriangle size={12} />,
-      autorizada: <CheckCircle2 size={12} />,
-      erro: <FileX size={12} />,
-      cancelada: <X size={12} />
-    };
-    // @ts-ignore
-    return <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border flex items-center gap-1.5 w-fit ${styles[status]}`}>{icons[status]} {status.toUpperCase()}</span>;
-  };
+  if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50/50 p-4 md:p-6 space-y-6">
+    <div className="min-h-screen w-full bg-[#F8FAFC] text-slate-800 font-sans overflow-x-hidden pb-20">
       
-      {/* HEADER */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-xl md:text-2xl font-black text-gray-800 flex items-center gap-2">Emissão de NFe</h1>
-          <p className="text-gray-500 text-xs md:text-sm">Gerencie e emita notas fiscais dos seus pedidos.</p>
-        </div>
+      <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8 space-y-6 md:space-y-8">
         
-        {/* BOTÃO ATUALIZADO COM A LÓGICA DE SIMULAÇÃO */}
-        <button 
+        {/* HEADER & AÇÃO PRINCIPAL */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 print:hidden">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900">Emissão de NFe</h1>
+            <p className="text-sm text-slate-500 mt-1">Gerencie e emita notas fiscais dos seus pedidos.</p>
+          </div>
+          
+          <button 
             onClick={handleUpdateSefaz}
             disabled={isUpdating}
-            className="bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-sm transition-all cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
-        >
-          <RefreshCw size={16} className={isUpdating ? "animate-spin text-blue-600" : ""} /> 
-          {isUpdating ? 'Sincronizando...' : 'Atualizar Sefaz'}
-        </button>
-      </div>
+            className="w-full md:w-auto px-5 py-2.5 bg-white border border-slate-300 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-70 disabled:cursor-not-allowed active:scale-95 cursor-pointer"
+          >
+            <RefreshCw size={16} className={`${isUpdating ? 'animate-spin text-blue-600' : 'text-slate-500'}`} /> 
+            {isUpdating ? 'Atualizando...' : 'Atualizar Sefaz'}
+          </button>
+        </div>
 
-      {/* KPI CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <KPICard title="Pendentes" value={totalPendentes} icon={<FileText size={20} />} color="bg-yellow-50 border-yellow-100" textColor="text-yellow-700" />
-        <KPICard title="Autorizadas Hoje" value={totalAutorizadas} icon={<CheckCircle2 size={20} />} color="bg-green-50 border-green-100" textColor="text-green-700" />
-        <KPICard title="Com Erro" value={totalErros} icon={<AlertTriangle size={20} />} color="bg-red-50 border-red-100" textColor="text-red-700" />
-      </div>
+        {/* CARDS DE RESUMO (KPIs) */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-6 print:hidden">
+          {/* Card Pendentes */}
+          <div className="bg-white p-5 rounded-2xl shadow-sm border border-amber-100 flex items-center justify-between relative overflow-hidden group">
+            <div className="absolute -right-6 -top-6 w-24 h-24 bg-amber-50 rounded-full group-hover:scale-110 transition-transform"></div>
+            <div className="relative z-10">
+              <p className="text-[11px] font-black uppercase tracking-wider text-amber-600 mb-1">Pendentes</p>
+              <h3 className="text-3xl font-black text-slate-800">{countPendentes}</h3>
+            </div>
+            <div className="relative z-10 p-3 bg-amber-100 text-amber-600 rounded-xl">
+              <FileText size={24} />
+            </div>
+          </div>
+          
+          {/* Card Autorizadas */}
+          <div className="bg-white p-5 rounded-2xl shadow-sm border border-emerald-100 flex items-center justify-between relative overflow-hidden group">
+            <div className="absolute -right-6 -top-6 w-24 h-24 bg-emerald-50 rounded-full group-hover:scale-110 transition-transform"></div>
+            <div className="relative z-10">
+              <p className="text-[11px] font-black uppercase tracking-wider text-emerald-600 mb-1">Autorizadas Hoje</p>
+              <h3 className="text-3xl font-black text-slate-800">{countAutorizadas}</h3>
+            </div>
+            <div className="relative z-10 p-3 bg-emerald-100 text-emerald-600 rounded-xl">
+              <CheckCircle2 size={24} />
+            </div>
+          </div>
 
-      {/* FILTROS */}
-      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-4">
-        <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
-          <div className="relative w-full md:w-96">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+          {/* Card Com Erro */}
+          <div className="bg-white p-5 rounded-2xl shadow-sm border border-rose-100 flex items-center justify-between relative overflow-hidden group">
+            <div className="absolute -right-6 -top-6 w-24 h-24 bg-rose-50 rounded-full group-hover:scale-110 transition-transform"></div>
+            <div className="relative z-10">
+              <p className="text-[11px] font-black uppercase tracking-wider text-rose-600 mb-1">Com Erro</p>
+              <h3 className="text-3xl font-black text-slate-800">{countErros}</h3>
+            </div>
+            <div className="relative z-10 p-3 bg-rose-100 text-rose-600 rounded-xl">
+              <AlertCircle size={24} />
+            </div>
+          </div>
+        </div>
+
+        {/* BARRA DE CONTROLES (BUSCA E TABS) */}
+        <div className="bg-white p-2 md:p-3 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row gap-3 items-center justify-between print:hidden">
+          
+          {/* Busca (Input esticado na esquerda) */}
+          <div className="relative w-full md:w-96 shrink-0 px-1 md:px-0">
+            <Search className="absolute left-4 md:left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input 
               type="text" 
               placeholder="Buscar por cliente, CPF/CNPJ ou ID..." 
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 md:border-none rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-slate-400 font-medium text-slate-700" 
+              value={searchTerm} 
+              onChange={(e) => setSearchTerm(e.target.value)} 
             />
           </div>
-          <div className="flex bg-gray-100 p-1 rounded-lg w-full md:w-auto overflow-x-auto no-scrollbar">
-            {['todos', 'pendente', 'autorizada', 'erro'].map((s) => (
-              <button key={s} onClick={() => setFilterStatus(s as any)} className={`flex-1 md:flex-none px-4 py-1.5 rounded-md text-xs font-bold capitalize transition-all cursor-pointer ${filterStatus === s ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
-                {s}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
 
-      {/* LISTAGEM */}
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-        {/* DESKTOP TABLE */}
-        <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Pedido</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Cliente</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Data</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Valor</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-center">Status Sefaz</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">Ação</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filteredPedidos.map((pedido) => (
-                <tr 
-                    key={pedido.id} 
-                    onClick={() => setSelectedPedido(pedido)}
-                    className="hover:bg-blue-50/30 transition-colors cursor-pointer group"
+          {/* Tabs responsivas (Direita) */}
+          <div className="w-full md:w-auto overflow-x-auto no-scrollbar pb-1 md:pb-0 px-1 md:px-0">
+            <div className="flex gap-2 w-max">
+              {[
+                { id: 'todos', label: 'Todos' },
+                { id: 'pendente', label: 'Pendente' },
+                { id: 'autorizada', label: 'Autorizada' },
+                { id: 'erro', label: 'Erro' }
+              ].map((tab) => (
+                <button 
+                  key={tab.id} 
+                  onClick={() => setStatusFilter(tab.id)} 
+                  className={`px-4 py-2 text-xs md:text-sm font-semibold rounded-xl transition-all whitespace-nowrap shrink-0 cursor-pointer ${
+                    statusFilter === tab.id 
+                      ? 'bg-slate-800 text-white shadow-md' 
+                      : 'bg-transparent text-slate-500 hover:bg-slate-100 hover:text-slate-700'
+                  }`}
                 >
-                  <td className="px-6 py-4 font-mono text-sm text-blue-600 font-bold group-hover:text-blue-700">#{pedido.id}</td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm font-bold text-gray-800">{pedido.clienteNome}</div>
-                    <div className="text-xs text-gray-400 font-mono">{pedido.clienteDoc}</div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-600 font-medium">{formatDate(pedido.data)}</td>
-                  <td className="px-6 py-4 text-sm font-bold text-gray-800">{formatMoney(pedido.total)}</td>
-                  <td className="px-6 py-4 flex justify-center"><StatusBadge status={pedido.status} /></td>
-                  <td className="px-6 py-4 text-right">
-                    <ChevronRight size={20} className="ml-auto text-gray-300 group-hover:text-blue-600 transition-colors" />
-                  </td>
-                </tr>
+                  {tab.label}
+                </button>
               ))}
-            </tbody>
-          </table>
+            </div>
+          </div>
         </div>
 
-        {/* MOBILE LIST */}
-        <div className="md:hidden divide-y divide-gray-100">
-          {filteredPedidos.map((pedido) => (
-            <div 
-                key={pedido.id} 
-                onClick={() => setSelectedPedido(pedido)} 
-                className="p-4 active:bg-gray-50 transition-colors cursor-pointer flex justify-between items-center group"
-            >
-              <div className="flex gap-3">
-                <div className={`p-2.5 rounded-xl h-fit ${pedido.status === 'autorizada' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'}`}>
-                  <FileText size={20} />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-black text-blue-600">#{pedido.id}</span>
-                    <span className="text-xs text-gray-400">• {formatDate(pedido.data)}</span>
+        {/* LISTAGEM DE PEDIDOS */}
+        <div className="bg-transparent md:bg-white md:rounded-3xl md:shadow-sm md:border md:border-slate-200 overflow-hidden">
+          
+          {/* CABEÇALHO DA TABELA (Visível apenas em Desktop) */}
+          <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-4 border-b border-slate-100 bg-slate-50/50 text-[11px] font-black text-slate-400 uppercase tracking-widest">
+            <div className="col-span-2">Pedido</div>
+            <div className="col-span-4">Cliente</div>
+            <div className="col-span-2">Data</div>
+            <div className="col-span-2">Valor</div>
+            <div className="col-span-2 text-center">Status / Ação</div>
+          </div>
+
+          {/* CORPO DA LISTA */}
+          <div className="flex flex-col gap-3 md:gap-0">
+            {filteredPedidos.map((pedido, index) => {
+              const status = getStatusConfig(pedido.status);
+              
+              return (
+                <div 
+                  key={pedido.id} 
+                  className={`bg-white md:bg-transparent p-4 md:p-6 rounded-2xl md:rounded-none shadow-sm md:shadow-none border border-slate-200 md:border-none flex flex-col md:grid md:grid-cols-12 md:gap-4 md:items-center cursor-pointer group transition-all hover:bg-slate-50/80 ${index !== filteredPedidos.length - 1 ? 'md:border-b md:border-slate-100' : ''}`}
+                >
+                  
+                  {/* Linha Superior (Mobile) / Coluna 1 e 2 (Desktop) */}
+                  <div className="flex justify-between items-start md:contents mb-3 md:mb-0">
+                    <div className="md:col-span-2">
+                      <span className="font-black text-blue-600 bg-blue-50 px-2 py-1 rounded-md text-xs md:text-sm border border-blue-100">
+                        {pedido.id}
+                      </span>
+                    </div>
+                    
+                    {/* Badge visível no mobile no topo à direita */}
+                    <div className="md:hidden">
+                      <span className={`px-2 py-1 rounded-md text-[10px] font-bold flex items-center gap-1 border ${status.bg} ${status.color} ${status.border}`}>
+                        {status.icon} {status.label}
+                      </span>
+                    </div>
                   </div>
-                  <h4 className="text-sm font-bold text-gray-800 mb-0.5">{pedido.clienteNome}</h4>
-                  <p className="text-xs font-medium text-gray-500 mb-2">{formatMoney(pedido.total)}</p>
-                  <StatusBadge status={pedido.status} />
+
+                  {/* Info do Cliente */}
+                  <div className="md:col-span-4 flex flex-col min-w-0 mb-3 md:mb-0">
+                    <p className="font-bold text-slate-800 text-sm md:text-base truncate group-hover:text-blue-600 transition-colors">
+                      {pedido.cliente}
+                    </p>
+                    <p className="text-xs text-slate-400 font-medium">
+                      {pedido.documento}
+                    </p>
+                  </div>
+
+                  {/* Informações Flex (Data e Valor) - Lado a lado no mobile */}
+                  <div className="flex items-center justify-between md:contents pt-3 border-t border-slate-100 md:border-none md:pt-0">
+                    <div className="md:col-span-2 flex flex-col md:block">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 md:hidden mb-0.5">Data</span>
+                      <span className="text-sm font-medium text-slate-600">
+                        {pedido.data}
+                      </span>
+                    </div>
+                    
+                    <div className="md:col-span-2 flex flex-col items-end md:items-start md:block">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 md:hidden mb-0.5">Valor</span>
+                      <span className="text-sm md:text-base font-black text-slate-800">
+                        {formatCurrency(pedido.valor)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Status Sefaz e Botão (Visível no final no Desktop) */}
+                  <div className="hidden md:flex md:col-span-2 items-center justify-between">
+                    <span className={`px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1.5 border ${status.bg} ${status.color} ${status.border}`}>
+                      {status.icon} <span className="uppercase tracking-wide">{status.label}</span>
+                    </span>
+                    <ChevronRight size={20} className="text-slate-300 group-hover:text-blue-500 transition-colors" />
+                  </div>
                 </div>
+              );
+            })}
+
+            {filteredPedidos.length === 0 && (
+              <div className="text-center py-20 px-4">
+                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Search className="text-slate-400" size={24} />
+                </div>
+                <h3 className="text-lg font-bold text-slate-700 mb-1">Nenhuma nota encontrada</h3>
+                <p className="text-sm text-slate-500">Altere o filtro ou o termo de busca para encontrar o que procura.</p>
               </div>
-              <ChevronRight size={20} className="text-gray-300 group-hover:text-blue-500 transition-colors" />
-            </div>
-          ))}
+            )}
+          </div>
         </div>
+
       </div>
 
-      {/* MODAL DE DETALHES/EMISSÃO */}
-      {selectedPedido && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95">
-            <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-              <div>
-                <h2 className="text-lg font-bold text-gray-800">Detalhes da NFe</h2>
-                <p className="text-xs text-gray-500">Pedido #{selectedPedido.id}</p>
-              </div>
-              <button onClick={() => setSelectedPedido(null)} className="text-gray-400 hover:bg-gray-200 p-1 rounded-full cursor-pointer"><X size={20} /></button>
-            </div>
-
-            <div className="p-6 overflow-y-auto space-y-6">
-              
-              {/* Status Header */}
-              <div className="flex items-center justify-between bg-gray-50 p-4 rounded-xl border border-gray-100">
-                <span className="text-xs font-bold text-gray-500 uppercase">Status Atual</span>
-                <StatusBadge status={selectedPedido.status} />
-              </div>
-
-              {/* Dados do Cliente */}
-              <div>
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Destinatário</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3 border border-gray-100 rounded-lg">
-                    <span className="text-[10px] text-gray-400 block">Nome / Razão Social</span>
-                    <span className="text-sm font-bold text-gray-800">{selectedPedido.clienteNome}</span>
-                  </div>
-                  <div className="p-3 border border-gray-100 rounded-lg">
-                    <span className="text-[10px] text-gray-400 block">CPF / CNPJ</span>
-                    <span className="text-sm font-bold text-gray-800">{selectedPedido.clienteDoc}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Itens */}
-              <div>
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Itens da Nota</h3>
-                <div className="border border-gray-200 rounded-xl overflow-hidden">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-gray-50 text-gray-500 text-[10px] uppercase font-bold">
-                      <tr>
-                        <th className="px-4 py-2">Produto</th>
-                        <th className="px-4 py-2 text-center">Qtd</th>
-                        <th className="px-4 py-2 text-right">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {selectedPedido.itens.map((item, idx) => (
-                        <tr key={idx}>
-                          <td className="px-4 py-2 text-gray-700">{item.produto}</td>
-                          <td className="px-4 py-2 text-center text-gray-500">{item.qtd}</td>
-                          <td className="px-4 py-2 text-right font-bold text-gray-800">{formatMoney(item.valor * item.qtd)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <div className="bg-gray-50 px-4 py-3 flex justify-between items-center border-t border-gray-200">
-                    <span className="text-xs font-bold text-gray-500 uppercase">Valor Total</span>
-                    <span className="text-lg font-black text-blue-700">{formatMoney(selectedPedido.total)}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Ações */}
-              <div className="pt-2">
-                {selectedPedido.status === 'pendente' || selectedPedido.status === 'erro' ? (
-                  <button 
-                    onClick={handleEmitirNfe} 
-                    disabled={isGenerating}
-                    className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all flex items-center justify-center gap-2 disabled:opacity-70 cursor-pointer"
-                  >
-                    {isGenerating ? <Loader2 className="animate-spin" /> : <Printer size={18} />}
-                    {isGenerating ? 'Transmitindo para Sefaz...' : 'Transmitir NFe Agora'}
-                  </button>
-                ) : selectedPedido.status === 'autorizada' ? (
-                  <div className="grid grid-cols-2 gap-3">
-                    <button className="py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-50 flex items-center justify-center gap-2 cursor-pointer">
-                      <Download size={18} /> Baixar XML
-                    </button>
-                    <button className="py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 shadow-lg shadow-green-100 flex items-center justify-center gap-2 cursor-pointer">
-                      <Printer size={18} /> Imprimir DANFE
-                    </button>
-                  </div>
-                ) : (
-                  <div className="text-center text-sm text-gray-500 italic">Nota fiscal cancelada.</div>
-                )}
-              </div>
-
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* FEEDBACK TOAST */}
-      {feedback && (
-        <div className="fixed bottom-4 right-4 z-[100] animate-in slide-in-from-bottom-5 fade-in duration-300">
-          <div className={`flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl text-white font-bold ${feedback.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
-            {feedback.type === 'success' ? <CheckCircle2 /> : <AlertTriangle />}
-            {feedback.msg}
-            <button onClick={() => setFeedback(null)} className="ml-2 text-white/80 hover:text-white cursor-pointer"><X size={16} /></button>
-          </div>
-        </div>
-      )}
-
+      <style jsx global>{`
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
     </div>
   );
 }
-
-const KPICard = ({ title, value, icon, color, textColor }: any) => (
-  <div className={`p-4 rounded-xl border shadow-sm flex items-center justify-between ${color}`}>
-    <div>
-      <p className={`text-[10px] font-bold uppercase tracking-wide opacity-80 ${textColor}`}>{title}</p>
-      <h3 className={`text-2xl font-black mt-1 ${textColor}`}>{value}</h3>
-    </div>
-    <div className="p-3 bg-white/60 rounded-full shadow-sm">{icon}</div>
-  </div>
-);
